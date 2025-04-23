@@ -1,49 +1,64 @@
 import numpy as np
-from pettingzoo.mpe import simple_spread_v3
-from gymnasium import spaces
+import random
 
-class GoalBasedSimpleSpread:
-    def __init__(self, num_agents=3, max_cycles=25):
-        self.env = simple_spread_v3.parallel_env(N=num_agents, max_cycles=max_cycles, render_mode="human")
+class PickUpDropOffSimpleSpread:
+    def __init__(self, base_env, num_tasks=1):
+        self.env = base_env
         self.env.reset()
-        self.num_agents = num_agents
+
         self.agents = self.env.agents
-        self.max_cycles = max_cycles
+        self.num_tasks = num_tasks  # 1 pickup tasks and 1 drop off task
 
-        self.pickup_locations = {agent: np.random.uniform(-1, 1, size=(2,)) for agent in self.agents}
-        self.dropoff_locations = {agent: np.random.uniform(-1, 1, size=(2,)) for agent in self.agents}
-        self.pickup_complete = {agent: False for agent in self.agents}
+        self.pickups = None
+        self.dropoffs = None
+        self.agent_goals = {}
+        self._setup_task_goals()
 
-        obs_space = self.env.observation_space(self.agents[0])
-        self.observation_spaces = {agent: spaces.Box(low=-np.inf, high=np.inf, shape=(obs_space.shape[0] + 2,), dtype=np.float32) for agent in self.agents}
-        self.action_spaces = {agent: self.env.action_space(agent) for agent in self.agents}
+        self.observation_spaces = self.env.observation_spaces
+        self.action_spaces = self.env.action_spaces
+
+    def _setup_task_goals(self):
+        # randomly select pickup and drop off task locations
+        self.pickups = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
+        self.dropoffs = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
+        self.agent_goals = {}
+        for agent in self.agents:
+            task_idx = random.randint(0, self.num_tasks - 1)
+            self.agent_goals[agent] = {
+                'pickup': self.pickups[task_idx],
+                'dropoff': self.dropoffs[task_idx],
+                'reached_pickup': False,
+                'reached_dropoff': False
+            }
 
     def reset(self):
         obs = self.env.reset()
-        self.pickup_locations = {agent: np.random.uniform(-1, 1, size=(2,)) for agent in self.agents}
-        self.dropoff_locations = {agent: np.random.uniform(-1, 1, size=(2,)) for agent in self.agents}
-        self.pickup_complete = {agent: False for agent in self.agents}
-        return self._augment_obs(obs)
+        self._setup_task_goals()
+        return obs
 
     def step(self, actions):
-        obs, _, terminated, truncated, info = self.env.step(actions)
+        obs, rewards, dones, truncs, infos = self.env.step(actions)
+        infos = infos or {agent: {} for agent in self.agents}
 
-        rewards = {}
         for agent in self.agents:
-            agent_pos = self.env.env.state[agent].p_pos
-            goal = self.dropoff_locations[agent] if self.pickup_complete[agent] else self.pickup_locations[agent]
-            dist = np.linalg.norm(agent_pos - goal)
+            pos = self.env.state[agent]["p_pos"]
+            goal = self.agent_goals[agent]
 
-            rewards[agent] = -dist
+            if not goal['reached_pickup']:
+                if np.linalg.norm(pos - goal['pickup']) < 0.1:
+                    goal['reached_pickup'] = True
+                    rewards[agent] += 1.0  # Reward for reaching pickup
+                    infos[agent]['color'] = 'orange'
+                else:
+                    infos[agent]['color'] = 'red'
+            elif not goal['reached_dropoff']:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.1:
+                    goal['reached_dropoff'] = True
+                    rewards[agent] += 2.0  # Reward for reaching dropoff
+                    infos[agent]['color'] = 'green'
+                else:
+                    infos[agent]['color'] = 'orange'
+            else:
+                infos[agent]['color'] = 'green'
 
-            if not self.pickup_complete[agent] and dist < 0.1:
-                self.pickup_complete[agent] = True
-
-        return self._augment_obs(obs), rewards, terminated, truncated, info
-
-    def _augment_obs(self, obs_dict):
-        new_obs = {}
-        for agent in self.agents:
-            goal = self.dropoff_locations[agent] if self.pickup_complete[agent] else self.pickup_locations[agent]
-            new_obs[agent] = np.concatenate([obs_dict[agent], goal])
-        return new_obs
+        return obs, rewards, dones, truncs, infos
