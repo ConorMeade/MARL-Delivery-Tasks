@@ -5,81 +5,93 @@ import numpy as np
 from actor_critic import Actor, Critic
 
 class MAPPO:
-    def __init__(self, env, gamma=0.99, lr=1e-3, clip_eps=0.2):
+    def __init__(self, env, actor_critic, lr=1e-4, gamma=0.99, gae_lambda=0.95, clip_epsilon=0.2, value_loss_coef=0.5, entropy_coef=0.01):
         self.env = env
+        self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)  # Instantiate Actor
+        self.critic = Critic(actor_critic.obs_dim)  # Instantiate Critic
+        self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=lr)
+
+        # Hyperparameters
         self.gamma = gamma
-        self.clip_eps = clip_eps
+        self.gae_lambda = gae_lambda
+        self.clip_epsilon = clip_epsilon
+        self.value_loss_coef = value_loss_coef
+        self.entropy_coef = entropy_coef
 
-        obs_dim = env.observation_spaces[env.agents[0]].shape[0]
-        act_dim = env.action_spaces[env.agents[0]].n
+    def compute_advantages(self, rewards, values, next_values, dones):
+        advantages = torch.zeros_like(rewards)
+        last_advantage = 0
+        for t in reversed(range(len(rewards))):
+            if dones[t]:
+                delta = rewards[t] - values[t]
+            else:
+                delta = rewards[t] + self.gamma * next_values[t] - values[t]
+            advantages[t] = last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
+        return advantages
 
-        self.actors = {agent: Actor(obs_dim, act_dim) for agent in env.agents}
-        self.critics = {agent: Critic(obs_dim) for agent in env.agents}
-        self.optimizers = {
-            agent: optim.Adam(
-                list(self.actors[agent].parameters()) + list(self.critics[agent].parameters()), lr=lr
-            )
-            for agent in env.agents
-        }
+    def update(self, rollouts):
+        # Unroll the stored rollouts into tensors
+        states = torch.stack([r['state'] for r in rollouts])
+        actions = torch.stack([r['action'] for r in rollouts])
+        old_log_probs = torch.stack([r['log_prob'] for r in rollouts])
+        returns = torch.stack([r['return'] for r in rollouts])
+        advantages = torch.stack([r['advantage'] for r in rollouts])
 
-    def collect_trajectory(self, horizon=100):
-        memory = {agent: {'obs': [], 'actions': [], 'log_probs': [], 'rewards': [], 'values': []} for agent in self.env.agents}
-        obs = self.env.reset()
+        # Get new log probs and values
+        new_log_probs = self.actor.evaluate_actions(states, actions)
+        new_values = self.critic(states)
+        entropy = self.actor.get_entropy(states)
 
-        for _ in range(horizon):
-            actions = {}
-            for agent in self.env.agents:
-                obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
-                action, log_prob = self.actors[agent].sample_action(obs_tensor)
-                value = self.critics[agent](obs_tensor).item()
+        # Compute the ratio of new and old log probs
+        ratio = torch.exp(new_log_probs - old_log_probs)
 
-                memory[agent]['obs'].append(obs_tensor)
-                memory[agent]['actions'].append(action)
-                memory[agent]['log_probs'].append(log_prob)
-                memory[agent]['values'].append(value)
+        # Compute the policy loss (clipped PPO objective)
+        policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 
-                actions[agent] = action
+        # Compute the value loss
+        value_loss = self.value_loss_coef * (returns - new_values).pow(2).mean()
 
-            next_obs, rewards, dones, truncs, infos = self.env.step(actions)
+        # Compute the entropy loss
+        entropy_loss = -self.entropy_coef * entropy.mean()
 
-            for agent in self.env.agents:
-                memory[agent]['rewards'].append(rewards[agent])
+        # Total loss
+        loss = policy_loss + value_loss + entropy_loss
 
-            obs = next_obs
+        # Backpropagation
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
-        return memory
+    def train(self, num_episodes=1000):
+        for episode in range(num_episodes):
+            rollouts = []
+            obs = self.env.reset()
+            done = False
+            while not done:
+                actions = {}
+                log_probs = {}
+                for agent in self.env.agents:
+                    action, log_prob = self.actor.act(obs[agent])
+                    actions[agent] = action
+                    log_probs[agent] = log_prob
 
-    def compute_returns(self, rewards, values, gamma):
-        returns = []
-        G = 0
-        for r in reversed(rewards):
-            G = r + gamma * G
-            returns.insert(0, G)
-        return torch.tensor(returns, dtype=torch.float32), torch.tensor(values, dtype=torch.float32)
+                # Step environment with actions
+                next_obs, rewards, dones, truncs, infos = self.env.step(actions)
 
-    def update(self, memory):
-        for agent in self.env.agents:
-            obs = torch.stack(memory[agent]['obs'])
-            actions = torch.tensor(memory[agent]['actions'])
-            old_log_probs = torch.tensor(memory[agent]['log_probs'])
-            returns, values = self.compute_returns(memory[agent]['rewards'], memory[agent]['values'], self.gamma)
+                # Compute the advantage and store the rollout
+                for agent in self.env.agents:
+                    rollouts.append({
+                        'state': obs[agent],
+                        'action': actions[agent],
+                        'log_prob': log_probs[agent],
+                        'reward': rewards[agent],
+                        'done': dones[agent],
+                        'next_state': next_obs[agent],
+                        'next_value': self.critic(next_obs[agent]),
+                    })
 
-            advantages = returns - values
+                obs = next_obs
+                done = any(dones.values())  # Assuming it's a multi-agent environment
 
-            for _ in range(4):  # PPO epochs
-                probs = self.actors[agent](obs)
-                dist_probs = probs.gather(1, actions.unsqueeze(1)).squeeze(1)
-                new_log_probs = torch.log(dist_probs + 1e-8)
-
-                ratio = torch.exp(new_log_probs - old_log_probs)
-                clipped_ratio = torch.clamp(ratio, 1 - self.clip_eps, 1 + self.clip_eps)
-                policy_loss = -torch.min(ratio * advantages, clipped_ratio * advantages).mean()
-
-                value_preds = self.critics[agent](obs).squeeze(1)
-                value_loss = (returns - value_preds).pow(2).mean()
-
-                loss = policy_loss + 0.5 * value_loss
-
-                self.optimizers[agent].zero_grad()
-                loss.backward()
-                self.optimizers[agent].step()
+            # Update the model after each episode
+            self.update(rollouts)
