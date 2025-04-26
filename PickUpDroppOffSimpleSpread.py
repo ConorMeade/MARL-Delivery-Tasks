@@ -1,12 +1,12 @@
 import numpy as np
 import random
 from collections import defaultdict
-from pettingzoo.mpe import simple_spread_v3
+from pettingzoo.mpe import simple_spread_v3 # type: ignore
 
 
 class PickUpDropOffSimpleSpread:
     def __init__(self, seed, num_tasks=1):
-        self.env = simple_spread_v3.env(render_mode="human")  # PettingZoo simple_spread_v3 environment
+        self.env = simple_spread_v3.parallel_env(render_mode="human")  # PettingZoo simple_spread_v3 environment
         self.env.reset(seed=seed)
         self.num_tasks = num_tasks
         # self.observations, self.infos = self.env
@@ -46,12 +46,29 @@ class PickUpDropOffSimpleSpread:
         obs = {agent: self.env.observe(agent) for agent in self.agents}
         return obs
 
-    def step(self, actions):
-        # Step the environment with the given actions
-        next_obs, rewards, dones, truncs, infos = self.env.step(actions)
+    def step_pickup_drop(self, actions):
 
+        # Ensure all actions are int
+        # actions = {agent: int(action) for agent, action in actions.items()}
+        actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
+
+    
+        print(actions)
+        for agent, action in actions.items():
+            assert self.action_spaces(agent).contains(action), f"Invalid action {action} for {agent}"
+
+        print(self.action_spaces('agent_0'))
+        # Step the environment with the given actions
+        next_obs, rewards, termination, truncs, infos = self.env.step(actions)
+        # next_obs, rewards, termination, truncs, infos = self.env.last()
+
+        all_agent_status = []
         # Reward calculation and goal tracking
         for agent in self.agents:
+            # next_obs, rewards, termination, truncs, infos = self.env.last()
+            # action = int(actions[agent])
+            # assert self.env.action_space(agent).contains(action)
+            # self.env.step(action)
             pos = self.env.state[agent]["p_pos"]
             goal = self.agent_goals[agent]
 
@@ -72,4 +89,7 @@ class PickUpDropOffSimpleSpread:
             else:
                 infos[agent]['color'] = 'green'  # Goal achieved (both pickup and dropoff)
 
-        return next_obs, rewards, dones, truncs, infos
+            # all_agent_status.append(next_obs, rewards, termination, truncs, infos)
+
+        # return all_agent_status
+        return next_obs, rewards, termination, truncs, infos

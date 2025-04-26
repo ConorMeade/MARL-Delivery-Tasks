@@ -9,7 +9,7 @@ class MAPPO:
         self.env = env
         self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)  # Instantiate Actor
         self.critic = Critic(actor_critic.obs_dim)  # Instantiate Critic
-        self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=lr)
+        self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=0.001)
 
         # Hyperparameters
         self.gamma = gamma

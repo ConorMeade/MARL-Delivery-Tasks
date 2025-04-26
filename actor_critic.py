@@ -36,11 +36,21 @@ class Actor(nn.Module):
         Sample action based on the policy (Actor).
         """
         logits = self.forward(obs)
+        
         dist = torch.distributions.Categorical(logits=logits)  # Discrete action space
         action = dist.sample()
         log_prob = dist.log_prob(action)
         
         return action, log_prob
+
+    # def act(self, obs):
+    #     logits = self.forward(obs)
+    #     probs = torch.softmax(logits, dim=-1)
+    #     probs_np = probs.detach().cpu().numpy()
+    #     action = np.random.choice(len(probs_np), p=probs_np)
+    #     log_prob = np.log(probs_np[action] + 1e-8)
+    #     return int(action), log_prob  # <-- return as plain int
+
 
     def evaluate_actions(self, obs, actions):
         """

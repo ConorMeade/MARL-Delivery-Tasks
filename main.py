@@ -39,15 +39,19 @@ def main():
         while not done:
             actions = {}
             log_probs = {}
+            print('a')
 
             # Collect actions and log_probs for each agent
             for agent in base_env.agents:
-                action, log_prob = mappo_agent.actor.act(obs[agent])  # Get action and log_prob from actor
+                print(agent)
+                obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
+                action, log_prob = mappo_agent.actor.act(obs_tensor)  # Get action and log_prob from actor
+                # action, log_prob = mappo_agent.actor.act(obs[agent])  # Get action and log_prob from actor
                 actions[agent] = action
                 log_probs[agent] = log_prob
 
             # Step the environment with the chosen actions
-            next_obs, rewards, dones, truncs, infos = base_env.step(actions)
+            next_obs, rewards, dones, truncs, infos = base_env.step_pickup_drop(actions)
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
