@@ -5,24 +5,30 @@ from pettingzoo.mpe import simple_spread_v3
 
 
 class PickUpDropOffSimpleSpread:
-    def __init__(self, num_tasks=1):
-        self.env = simple_spread_v3.env()  # PettingZoo simple_spread_v3 environment
+    def __init__(self, seed, num_tasks=1):
+        self.env = simple_spread_v3.env(render_mode="human")  # PettingZoo simple_spread_v3 environment
+        self.env.reset(seed=seed)
         self.num_tasks = num_tasks
+        # self.observations, self.infos = self.env
         self.agents = list(self.env.agents)
-        
+        print(self.agents)
+
         self.pickups = None
         self.dropoffs = None
         self.agent_goals = {}
         self._setup_task_goals()
 
         # Observation and action spaces for each agent
-        self.observation_spaces = self.env.observation_spaces
-        self.action_spaces = self.env.action_spaces
+        self.observation_spaces = self.env.observation_space
+        self.action_spaces = self.env.action_space
 
     def _setup_task_goals(self):
         # Setup random pickup and dropoff locations for each agent
         self.pickups = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
         self.dropoffs = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
+
+        # print(self.pickups)
+        # print(self.dropoffs)
         
         self.agent_goals = defaultdict(dict)
         for idx, agent in enumerate(self.agents):

@@ -6,12 +6,17 @@ from actor_critic import Actor, Critic
 
 def main():
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
 
+    # print(base_env.agents)
+
+    # print(base_env.observation_spaces(0))
     # Define observation and action dimensions
-    obs_dim = base_env.observation_spaces[base_env.agents[0]].shape[0]  # Size of observation space for an agent
-    act_dim = base_env.action_spaces[base_env.agents[0]].n  # Size of action space for an agent
+    obs_dim = base_env.observation_spaces(base_env.agents[0]).shape[0]  # Size of observation space for an agent
+    act_dim = base_env.action_spaces(base_env.agents[0]).n  # Size of action space for an agent
 
+    print(obs_dim)
+    print(act_dim)
     # Instantiate Actor and Critic separately
     actor = Actor(obs_dim=obs_dim, act_dim=act_dim)  # Instantiate the Actor
     critic = Critic(obs_dim=obs_dim)  # Instantiate the Critic
