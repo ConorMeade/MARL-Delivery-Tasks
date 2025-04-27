@@ -41,16 +41,26 @@ class MAPPO:
         ])
         # old_log_probs = torch.stack([r['log_prob'] for r in rollouts])
         old_log_probs = torch.stack(
-            torch.tensor(r['log_prob'], dtype=torch.float32) for r in rollouts
+            [torch.tensor(r['log_prob'], dtype=torch.float32) for r in rollouts]
         )
         # returns = torch.stack([r['return'] for r in rollouts])
         returns = torch.stack(
-            torch.tensor(r['reward'], dtype=torch.float32) for r in rollouts
+            [torch.tensor(r['reward'], dtype=torch.float32) for r in rollouts]
         )
+        # advantage is the diff between Q-value and the value function:
         # advantages = torch.stack([r['advantage'] for r in rollouts])
-        advantages = torch.stack(
-            torch.tensor(r['advantage'], dtype=torch.float32) for r in rollouts
-        )
+        terminations = torch.stack([torch.tensor(r['done'], dtype=torch.float32) for r in rollouts])
+
+
+        # Get values (both current and next) from the critic
+        values = self.critic(states)
+        next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
+
+
+        advantages = self.compute_advantages(returns, values, next_values, terminations)
+        # advantages = torch.stack(
+        #     [torch.tensor(r['advantage'], dtype=torch.float32) for r in rollouts]
+        # )
 
         # Get new log probs and values
         new_log_probs = self.actor.evaluate_actions(states, actions)

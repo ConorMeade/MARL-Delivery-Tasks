@@ -139,3 +139,15 @@ class PickUpDropOffSimpleSpread:
             return np.concatenate([np.array(v).flatten() for v in obs.values()])
         else:
             return np.array(obs)
+        
+    def compute_advantage(self, rollouts, gamma=0.99, lam=0.95):
+        advantages = []
+        last_gae_lam = 0
+        for r in reversed(rollouts):
+            reward = r['reward']
+            value = r['value']  # Placeholder for value prediction
+            next_value = r['next_value']  # Placeholder for next value (last timestep should be 0)
+            delta = reward + gamma * next_value - value
+            last_gae_lam = delta + gamma * lam * last_gae_lam
+            advantages.append(last_gae_lam)
+        return advantages[::-1] 
