@@ -6,7 +6,13 @@ from pettingzoo.mpe import simple_spread_v3 # type: ignore
 
 class PickUpDropOffSimpleSpread:
     def __init__(self, seed, num_tasks=1):
-        self.env = simple_spread_v3.parallel_env(render_mode="human")  # PettingZoo simple_spread_v3 environment
+        self.env = simple_spread_v3.parallel_env(
+            render_mode="human",
+            N=3,
+            local_ratio=0.5,
+            max_cycles=25,
+            continuous_actions=False
+        )  
         self.env.reset(seed=seed)
         self.num_tasks = num_tasks
         # self.observations, self.infos = self.env
@@ -40,11 +46,23 @@ class PickUpDropOffSimpleSpread:
                 'reached_dropoff': False
             }
 
+    # def reset(self):
+    #     obs = self.env.reset()  # Reset PettingZoo environment
+    #     self.agents = list(self.env.observation_spaces.keys())
+    #     self._setup_task_goals()  # Setup new task goals after reset
+    #     # obs = {agent: self.env.observe(agent) for agent in self.agents}
+    #     return obs
+
     def reset(self):
-        self.env.reset()  # Reset PettingZoo environment
-        self._setup_task_goals()  # Setup new task goals after reset
-        obs = {agent: self.env.observe(agent) for agent in self.agents}
-        return obs
+        obs = self.env.reset()
+        self.agents = list(self.env.agents)  # Update agents list after reset
+
+        obs_flat = {}
+        print(obs)
+        for agent, raw_obs in obs[0].items():
+            obs_flat[agent] = self._flatten_if_needed(raw_obs)
+
+        return obs_flat
 
     def step_pickup_drop(self, actions):
 
@@ -54,17 +72,29 @@ class PickUpDropOffSimpleSpread:
 
     
         print(actions)
+
         for agent, action in actions.items():
             assert self.action_spaces(agent).contains(action), f"Invalid action {action} for {agent}"
 
         print(self.action_spaces('agent_0'))
         # Step the environment with the given actions
         next_obs, rewards, termination, truncs, infos = self.env.step(actions)
+
+        obs_flat = {}
+        for agent, raw_obs in next_obs.items():
+            obs_flat[agent] = self._flatten_if_needed(raw_obs)
         # next_obs, rewards, termination, truncs, infos = self.env.last()
 
-        all_agent_status = []
+        rewards_out = {agent: 0.0 for agent in self.agents}
+        term_out = {agent: False for agent in self.agents}
+        truncs_out = {agent: False for agent in self.agents}
+        infos_out = {agent: {} for agent in self.agents}
+
+
         # Reward calculation and goal tracking
         for agent in self.agents:
+            if agent not in next_obs:
+                continue  # skip agents no longer in the environment
             # next_obs, rewards, termination, truncs, infos = self.env.last()
             # action = int(actions[agent])
             # assert self.env.action_space(agent).contains(action)
@@ -75,21 +105,30 @@ class PickUpDropOffSimpleSpread:
             if not goal['reached_pickup']:
                 if np.linalg.norm(pos - goal['pickup']) < 0.1:
                     goal['reached_pickup'] = True
-                    rewards[agent] += 1.0  # Reward for reaching pickup
-                    infos[agent]['color'] = 'orange'  # Visual indication of pickup
+                    rewards_out[agent] += 1.0
+                    infos_out[agent]['color'] = 'orange'
                 else:
-                    infos[agent]['color'] = 'red'  # Still at pickup stage
+                    infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
                 if np.linalg.norm(pos - goal['dropoff']) < 0.1:
                     goal['reached_dropoff'] = True
-                    rewards[agent] += 2.0  # Reward for reaching dropoff
-                    infos[agent]['color'] = 'green'  # Visual indication of dropoff
+                    rewards_out[agent] += 2.0
+                    infos_out[agent]['color'] = 'green'
                 else:
-                    infos[agent]['color'] = 'orange'  # Pickup reached, now heading to dropoff
+                    infos_out[agent]['color'] = 'orange'
             else:
-                infos[agent]['color'] = 'green'  # Goal achieved (both pickup and dropoff)
+                infos_out[agent]['color'] = 'green'
 
-            # all_agent_status.append(next_obs, rewards, termination, truncs, infos)
+            term_out[agent] = termination.get(agent, False)
+            truncs_out[agent] = truncs.get(agent, False)  # Ensure truncs are passed
 
         # return all_agent_status
-        return next_obs, rewards, termination, truncs, infos
+        return obs_flat, rewards_out, term_out, truncs_out, infos_out
+        # return next_obs, rewards, termination, truncs, infos
+    
+    def _flatten_if_needed(self, obs):
+        """If obs is a dict, flatten it into a 1D array."""
+        if isinstance(obs, dict):
+            return np.concatenate([np.array(v).flatten() for v in obs.values()])
+        else:
+            return np.array(obs)

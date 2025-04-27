@@ -4,16 +4,31 @@ from PickUpDroppOffSimpleSpread import PickUpDropOffSimpleSpread
 from mappo import MAPPO
 from actor_critic import Actor, Critic
 
+
+def flatten_obs(obs_dict):
+    parts = []
+    for v in obs_dict.values():
+        parts.append(np.asarray(v).flatten())
+    return np.concatenate(parts)
+
 def main():
     # Initialize the environment (GoalBasedSimpleSpread)
     base_env = PickUpDropOffSimpleSpread(seed=42, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    # sample_obs = base_env.reset()
+    # print(sample_obs)
+    # print(type(sample_obs))
+    # sample_flat_obs = flatten_obs(sample_obs[0])
+    agent = base_env.agents[0]  # Just pick one agent
+    obs_dim = base_env.observation_spaces(agent).shape[0]
+    act_dim = base_env.action_spaces(agent).n
 
-    # print(base_env.agents)
 
+    # obs_dim = sample_flat_obs.shape[0]  # ← dynamic based on env
+    # act_dim = base_env.action_spaces[base_env.agents[0]].n
     # print(base_env.observation_spaces(0))
     # Define observation and action dimensions
-    obs_dim = base_env.observation_spaces(base_env.agents[0]).shape[0]  # Size of observation space for an agent
-    act_dim = base_env.action_spaces(base_env.agents[0]).n  # Size of action space for an agent
+    # obs_dim = base_env.observation_spaces(base_env.agents[0]).shape[0]  # Size of observation space for an agent
+    # act_dim = base_env.action_spaces(base_env.agents[0]).n  # Size of action space for an agent
 
     print(obs_dim)
     print(act_dim)
@@ -42,13 +57,16 @@ def main():
             print('a')
 
             # Collect actions and log_probs for each agent
+            # for agent in range(len(base_env.agents)):
             for agent in base_env.agents:
-                print(agent)
+                # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32).unsqueeze(0)  # (1, obs_dim)
                 obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
+                # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
                 action, log_prob = mappo_agent.actor.act(obs_tensor)  # Get action and log_prob from actor
                 # action, log_prob = mappo_agent.actor.act(obs[agent])  # Get action and log_prob from actor
-                actions[agent] = action
+                actions[agent] = int(action)
                 log_probs[agent] = log_prob
+                # values[]
 
             # Step the environment with the chosen actions
             next_obs, rewards, dones, truncs, infos = base_env.step_pickup_drop(actions)
