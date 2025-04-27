@@ -78,10 +78,10 @@ class PickUpDropOffSimpleSpread:
 
         print(self.action_spaces('agent_0'))
         # Step the environment with the given actions
-        next_obs, rewards, termination, truncs, infos = self.env.step(actions)
+        observation, rewards, termination, truncs, infos = self.env.step(actions)
 
         obs_flat = {}
-        for agent, raw_obs in next_obs.items():
+        for agent, raw_obs in observation.items():
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
         # next_obs, rewards, termination, truncs, infos = self.env.last()
 
@@ -93,13 +93,20 @@ class PickUpDropOffSimpleSpread:
 
         # Reward calculation and goal tracking
         for agent in self.agents:
-            if agent not in next_obs:
+            if agent not in observation:
                 continue  # skip agents no longer in the environment
-            # next_obs, rewards, termination, truncs, infos = self.env.last()
-            # action = int(actions[agent])
-            # assert self.env.action_space(agent).contains(action)
-            # self.env.step(action)
-            pos = self.env.state[agent]["p_pos"]
+            # observation[agent] = [
+            #     x_pos, y_pos,                # ← 0–1 : actual (global) position
+            #     x_vel, y_vel,                # ← 2–3 : velocity
+            #     rel_landmark0_x, rel_landmark0_y,   # ← 4–5 : relative to landmark 0
+            #     rel_landmark1_x, rel_landmark1_y,   # ← 6–7
+            #     rel_landmark2_x, rel_landmark2_y,   # ← 8–9
+            #     rel_agent1_x, rel_agent1_y,         # ← 10–11 : relative to other agent 1
+            #     rel_agent2_x, rel_agent2_y,         # ← 12–13 : relative to other agent 2
+            #     (maybe padding or comms)     # ← 14–17
+            # ]
+            pos = observation[agent][:2]
+            # pos = self.env.state(agent)["p_pos"]
             goal = self.agent_goals[agent]
 
             if not goal['reached_pickup']:
