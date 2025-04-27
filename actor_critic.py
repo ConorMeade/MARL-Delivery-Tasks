@@ -66,22 +66,36 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.obs_dim = obs_dim
         
+
+        self.fc1 = nn.Linear(obs_dim, HIDDEN_SIZE)
+        self.fc2 = nn.Linear(HIDDEN_SIZE, 1)
         # Shared fully connected layers
-        self.shared_fc = nn.Sequential(
-            nn.Linear(obs_dim, HIDDEN_SIZE),
-            nn.ReLU(),
-            nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
-            nn.ReLU()
-        )
+        # self.shared_fc = nn.Sequential(
+        #     nn.Linear(obs_dim, HIDDEN_SIZE),
+        #     nn.ReLU(),
+        #     nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
+        #     nn.ReLU()
+        # )
         
-        # Critic network (outputs state value)
-        self.critic_fc = nn.Linear(HIDDEN_SIZE, 1)
+        # # Critic network (outputs state value)
+        # self.critic_fc = nn.Linear(HIDDEN_SIZE, 1)
 
     def forward(self, obs):
-        # Shared feature extraction
-        x = self.shared_fc(obs)
-        
-        # Critic (state value)
-        value = self.critic_fc(x)
-        
+        if isinstance(obs, np.ndarray):
+            obs = torch.tensor(obs, dtype=torch.float32)
+
+        if obs.dim() == 1:
+            obs = obs.unsqueeze(0)  # Automatically add batch dimension
+
+        x = F.relu(self.fc1(obs))
+
+        value = self.fc2(x)
+
         return value
+        # Shared feature extraction
+        # x = self.shared_fc(obs)
+        
+        # # Critic (state value)
+        # value = self.critic_fc(x)
+        
+        # return value
