@@ -31,11 +31,26 @@ class MAPPO:
 
     def update(self, rollouts):
         # Unroll the stored rollouts into tensors
-        states = torch.stack([r['state'] for r in rollouts])
-        actions = torch.stack([r['action'] for r in rollouts])
-        old_log_probs = torch.stack([r['log_prob'] for r in rollouts])
-        returns = torch.stack([r['return'] for r in rollouts])
-        advantages = torch.stack([r['advantage'] for r in rollouts])
+        # states = torch.stack([r['state'] for r in rollouts])
+        states = torch.stack([
+            torch.tensor(r['state'], dtype=torch.float32) for r in rollouts
+        ])
+        # actions = torch.stack([r['action'] for r in rollouts])
+        actions = torch.stack([
+            torch.tensor(r['action'], dtype=torch.float32) for r in rollouts
+        ])
+        # old_log_probs = torch.stack([r['log_prob'] for r in rollouts])
+        old_log_probs = torch.stack(
+            torch.tensor(r['log_prob'], dtype=torch.float32) for r in rollouts
+        )
+        # returns = torch.stack([r['return'] for r in rollouts])
+        returns = torch.stack(
+            torch.tensor(r['reward'], dtype=torch.float32) for r in rollouts
+        )
+        # advantages = torch.stack([r['advantage'] for r in rollouts])
+        advantages = torch.stack(
+            torch.tensor(r['advantage'], dtype=torch.float32) for r in rollouts
+        )
 
         # Get new log probs and values
         new_log_probs = self.actor.evaluate_actions(states, actions)
