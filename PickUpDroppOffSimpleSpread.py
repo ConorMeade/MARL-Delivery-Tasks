@@ -5,19 +5,25 @@ from pettingzoo.mpe import simple_spread_v3 # type: ignore
 
 
 class PickUpDropOffSimpleSpread:
-    def __init__(self, seed, num_tasks=1):
+    def __init__(self, seed, max_cycles, num_tasks=1):
         self.env = simple_spread_v3.parallel_env(
             render_mode="human",
             N=3,
             local_ratio=0.5,
-            max_cycles=200,
+            max_cycles=max_cycles,
             continuous_actions=False
-        )  
+        )
         self.env.reset(seed=seed)
         self.num_tasks = num_tasks
         # self.observations, self.infos = self.env
         self.agents = list(self.env.agents)
-        # print(self.agents)
+        self.agent_termination_flags = {agent: False for agent in self.agents}
+        self.agent_rewards_out = {agent: 0.0 for agent in self.agents}
+        self.agent_truncs_out = {agent: False for agent in self.agents}
+        self.agent_infos_out = {agent: {} for agent in self.agents}
+
+        self.step_count = 0
+        self.max_cycles = max_cycles
 
         self.pickups = None
         self.dropoffs = None
@@ -62,22 +68,28 @@ class PickUpDropOffSimpleSpread:
     def reset(self):
         obs = self.env.reset()
         self.agents = list(self.env.agents)  # Update agents list after reset
+        self.agent_termination_flags = {agent: False for agent in self.agents}
+        self.agent_rewards_out = {agent: 0.0 for agent in self.agents}
+        self.agent_truncs_out = {agent: False for agent in self.agents}
+        self.agent_infos_out = {agent: {} for agent in self.agents}
 
+        self.step_count = 0
         obs_flat = {}
-        # print(obs)
+
         for agent, raw_obs in obs[0].items():
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
 
         return obs_flat
 
     def step_pickup_drop(self, actions):
+        self.step_count += 1
+
+        if self.step_count % 25 == 0:
+            print(self.step_count)
 
         # Ensure all actions are int
         # actions = {agent: int(action) for agent, action in actions.items()}
         actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
-
-    
-        # print(actions)
 
         for agent, action in actions.items():
             assert self.action_spaces(agent).contains(action), f"Invalid action {action} for {agent}"
@@ -91,16 +103,17 @@ class PickUpDropOffSimpleSpread:
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
         # next_obs, rewards, termination, truncs, infos = self.env.last()
 
-        rewards_out = {agent: 0.0 for agent in self.agents}
-        term_out = {agent: False for agent in self.agents}
-        truncs_out = {agent: False for agent in self.agents}
-        infos_out = {agent: {} for agent in self.agents}
+        # rewards_out = {agent: 0.0 for agent in self.agents}
+        # term_out = {agent: False for agent in self.agents}
+        # truncs_out = {agent: False for agent in self.agents}
+        # infos_out = {agent: {} for agent in self.agents}
 
 
         # Reward calculation and goal tracking
         for agent in self.agents:
             if agent not in observation:
                 continue  # skip agents no longer in the environment
+            # REF
             # observation[agent] = [
             #     x_pos, y_pos,                # ← 0–1 : actual (global) position
             #     x_vel, y_vel,                # ← 2–3 : velocity
@@ -119,28 +132,31 @@ class PickUpDropOffSimpleSpread:
                 if np.linalg.norm(pos - goal['pickup']) < 0.7:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
-                    rewards_out[agent] += 1.0
-                    infos_out[agent]['color'] = 'orange'
+                    self.agent_rewards_out[agent] += 1.0
+                    self.agent_infos_out[agent]['color'] = 'orange'
                 else:
-                    infos_out[agent]['color'] = 'red'
+                    self.agent_infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
                 if np.linalg.norm(pos - goal['dropoff']) < 0.7:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
-                    rewards_out[agent] += 2.0
-                    infos_out[agent]['color'] = 'green'
-                    term_out[agent] = True
+                    self.agent_rewards_out[agent] += 2.0
+                    self.agent_infos_out[agent]['color'] = 'green'
+                    self.agent_termination_flags[agent] = True
                 else:
-                    infos_out[agent]['color'] = 'orange'
+                    self.agent_infos_out[agent]['color'] = 'orange'
             else:
-                infos_out[agent]['color'] = 'green'
+                self.agent_infos_out[agent]['color'] = 'green'
 
 
-            term_out[agent] = termination.get(agent, False)
-            truncs_out[agent] = truncs.get(agent, False)  # Ensure truncs are passed
-
+            # term_out[agent] = termination.get(agent, False)
+            # truncs_out[agent] = truncs.get(agent, False)  # Ensure truncs are passed
+        if self.step_count >= self.max_cycles:
+            terminations = {agent: True for agent in self.agents}
+            return obs_flat, dict(self.agent_rewards_out), terminations, dict(self.agent_truncs_out), dict(self.agent_infos_out)
+        else:
         # return all_agent_status
-        return obs_flat, rewards_out, term_out, truncs_out, infos_out
+            return obs_flat, dict(self.agent_rewards_out), dict(self.agent_termination_flags), dict(self.agent_truncs_out), dict(self.agent_infos_out)
         # return next_obs, rewards, termination, truncs, infos
     
     def _flatten_if_needed(self, obs):

@@ -28,7 +28,11 @@ class MAPPO:
                 delta = rewards[t] + self.gamma * next_values[t] - values[t]
             advantages[t] = last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
         return advantages
+    
 
+
+    #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
+    #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
     def update(self, rollouts):
         # Unroll the stored rollouts into tensors
         # states = torch.stack([r['state'] for r in rollouts])
