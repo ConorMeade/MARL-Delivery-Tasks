@@ -49,7 +49,7 @@ class MAPPO:
         )
         # advantage is the diff between Q-value and the value function:
         # advantages = torch.stack([r['advantage'] for r in rollouts])
-        terminations = torch.stack([torch.tensor(r['done'], dtype=torch.float32) for r in rollouts])
+        terminations = torch.stack([torch.tensor(r['termination'], dtype=torch.float32) for r in rollouts])
 
 
         # Get values (both current and next) from the critic
@@ -87,7 +87,9 @@ class MAPPO:
         loss.backward()
         self.optimizer.step()
 
+
     def train(self, num_episodes=1000):
+        # generate rollouts to train on
         for _ in range(num_episodes):
             rollouts = []
             obs = self.env.reset()

@@ -17,7 +17,7 @@ class PickUpDropOffSimpleSpread:
         self.num_tasks = num_tasks
         # self.observations, self.infos = self.env
         self.agents = list(self.env.agents)
-        print(self.agents)
+        # print(self.agents)
 
         self.pickups = None
         self.dropoffs = None
@@ -28,6 +28,12 @@ class PickUpDropOffSimpleSpread:
         self.observation_spaces = self.env.observation_space
         self.action_spaces = self.env.action_space
 
+
+    def render(self):
+        """Forward the render call to the base environment."""
+        self.env.render()
+
+    
     def _setup_task_goals(self):
         # Setup random pickup and dropoff locations for each agent
         self.pickups = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
@@ -58,7 +64,7 @@ class PickUpDropOffSimpleSpread:
         self.agents = list(self.env.agents)  # Update agents list after reset
 
         obs_flat = {}
-        print(obs)
+        # print(obs)
         for agent, raw_obs in obs[0].items():
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
 
@@ -71,12 +77,12 @@ class PickUpDropOffSimpleSpread:
         actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
 
     
-        print(actions)
+        # print(actions)
 
         for agent, action in actions.items():
             assert self.action_spaces(agent).contains(action), f"Invalid action {action} for {agent}"
 
-        print(self.action_spaces('agent_0'))
+        # print(self.action_spaces('agent_0'))
         # Step the environment with the given actions
         observation, rewards, termination, truncs, infos = self.env.step(actions)
 

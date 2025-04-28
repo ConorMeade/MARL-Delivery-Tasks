@@ -50,11 +50,13 @@ def main():
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
 
-        if episode % 50 == 0:
+        if episode % 25 == 0:
             print(f'Episodes #{episode}')
         
+        done_flags = {agent: False for agent in base_env.agents}
+
         # Start episode loop
-        while not done:
+        while not all(done_flags.values()):
             actions = {}
             log_probs = {}
             # print('a')
@@ -62,6 +64,9 @@ def main():
             # Collect actions and log_probs for each agent
             # for agent in range(len(base_env.agents)):
             for agent in base_env.agents:
+                print(agent)
+                if done_flags[agent] or agent not in obs:
+                    continue
                 # print(agent)
                 # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32).unsqueeze(0)  # (1, obs_dim)
                 obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
@@ -75,29 +80,60 @@ def main():
                 # values[]
 
             # Step the environment with the chosen actions
-            next_obs, rewards, dones, truncs, infos = base_env.step_pickup_drop(actions)
+            next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
 
-            next_obs_array = next_obs[agent]
+            # base_env.render()
+            # if agent in next_obs:
+            #     next_obs_array = next_obs[agent]
+            # else:
+            #     next_obs_array = torch.tensor(0.0)
 
-            if isinstance(next_obs_array, np.ndarray):
-                next_obs_tensor = torch.tensor(next_obs_array, dtype=torch.float32)
+            # if isinstance(next_obs_array, np.ndarray):
+            #     next_obs_tensor = torch.tensor(next_obs_array, dtype=torch.float32)
 
-            if next_obs_tensor.dim() == 1:
-                next_obs_tensor = next_obs_tensor.unsqueeze(0)  # Add batch dim
+            # if next_obs_tensor.dim() == 1:
+            #     next_obs_tensor = next_obs_tensor.unsqueeze(0)  # Add batch dim
 
-            next_value = mappo_agent.critic(next_obs_tensor)
+            # next_value = mappo_agent.critic(next_obs_tensor)
 
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
+                if done_flags[agent]:
+                    continue
+
+                # if agent in obs:
+                #     state = obs[agent]
+                # else:
+                #     state = np.zeros(obs_dim)
+
+
+                # if not terminations[agent]:
+                if agent in next_obs:
+                    state = obs[agent]
+                    next_state = next_obs[agent]
+                    next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
+                    next_value = mappo_agent.critic(next_state_tensor).squeeze()
+                else:
+                    state = np.zeros(obs_dim)
+                    next_state = np.zeros(obs_dim, dtype=np.float32) # zeros with same shape
+                    next_value = torch.tensor(0.0)
+
+                action_roll = actions.get(agent, np.zeros(base_env.action_spaces(agent).shape, dtype=np.float32))
+                log_prob_roll = log_probs.get(agent, torch.tensor(0.0))
+    
+
                 rollouts.append({
-                    'state': obs[agent],
-                    'action': actions[agent],
-                    'log_prob': log_probs[agent],
+                    'state': state,
+                    # 'action': actions[agent],
+                    'action': action_roll,
+                    # 'log_prob': log_probs[agent],
+                    'log_prob': log_prob_roll,
                     'reward': rewards[agent],
-                    'done': dones[agent],
-                    'next_state': next_obs[agent],
+                    'termination': terminations[agent],
+                    # 'next_state': next_obs[agent],
+                    'next_state': next_state,
                     'next_value': next_value,
                     # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
@@ -105,7 +141,8 @@ def main():
                 episode_rewards[agent] += rewards[agent]  # Accumulate rewards
 
             obs = next_obs
-            done = any(dones.values())  # Episode ends if any agent is done
+            done_flags.update(terminations)
+            terminations = any(terminations.values())  # Episode ends if any agent is done
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
