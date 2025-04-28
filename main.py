@@ -1,6 +1,6 @@
 import torch
 import numpy as np
-from PickUpDroppOffSimpleSpread import PickUpDropOffSimpleSpread
+from PickUpDropOffSimpleSpread import PickUpDropOffSimpleSpread
 from mappo import MAPPO
 from actor_critic import Actor, Critic
 
@@ -77,8 +77,6 @@ def main():
             # Step the environment with the chosen actions
             next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
-
-            # base_env.render()
             # if agent in next_obs:
             #     next_obs_array = next_obs[agent]
             # else:
@@ -95,7 +93,7 @@ def main():
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
-                if done_flags[agent]:
+                if terminations[agent]:
                     continue
 
                 # if not terminations[agent]:
@@ -126,12 +124,14 @@ def main():
                     # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
 
+
+                # if episode_rewards[agent] + rewards[agent] <= 3.0:  ## TODO: check this, sum is more than 3.0 without this check
                 episode_rewards[agent] += rewards[agent]  # Accumulate rewards
 
             obs = next_obs
             # print(terminations)
             done_flags.update(terminations)
-            terminations = any(terminations.values())  # Episode ends if any agent is done
+            # terminations = any(terminations.values())  # Episode ends if any agent is done
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:

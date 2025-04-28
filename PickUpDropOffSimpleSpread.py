@@ -72,7 +72,7 @@ class PickUpDropOffSimpleSpread:
         self.agent_rewards_out = {agent: 0.0 for agent in self.agents}
         self.agent_truncs_out = {agent: False for agent in self.agents}
         self.agent_infos_out = {agent: {} for agent in self.agents}
-
+        self._setup_task_goals()
         self.step_count = 0
         obs_flat = {}
 
@@ -129,7 +129,7 @@ class PickUpDropOffSimpleSpread:
             goal = self.agent_goals[agent]
 
             if not goal['reached_pickup']:
-                if np.linalg.norm(pos - goal['pickup']) < 0.7:
+                if np.linalg.norm(pos - goal['pickup']) < 0.9:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
                     self.agent_rewards_out[agent] += 1.0
@@ -137,7 +137,7 @@ class PickUpDropOffSimpleSpread:
                 else:
                     self.agent_infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
-                if np.linalg.norm(pos - goal['dropoff']) < 0.7:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.9:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
                     self.agent_rewards_out[agent] += 2.0
