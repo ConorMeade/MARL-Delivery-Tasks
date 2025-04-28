@@ -49,18 +49,24 @@ def main():
         done = False
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
+
+        if episode % 50 == 0:
+            print(f'Episodes #{episode}')
         
         # Start episode loop
         while not done:
             actions = {}
             log_probs = {}
-            print('a')
+            # print('a')
 
             # Collect actions and log_probs for each agent
             # for agent in range(len(base_env.agents)):
             for agent in base_env.agents:
+                # print(agent)
                 # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32).unsqueeze(0)  # (1, obs_dim)
                 obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
+                # print(len(obs[agent]))
+                # print(obs_tensor)
                 # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
                 action, log_prob = mappo_agent.actor.act(obs_tensor)  # Get action and log_prob from actor
                 # action, log_prob = mappo_agent.actor.act(obs[agent])  # Get action and log_prob from actor
@@ -71,6 +77,18 @@ def main():
             # Step the environment with the chosen actions
             next_obs, rewards, dones, truncs, infos = base_env.step_pickup_drop(actions)
 
+
+            next_obs_array = next_obs[agent]
+
+            if isinstance(next_obs_array, np.ndarray):
+                next_obs_tensor = torch.tensor(next_obs_array, dtype=torch.float32)
+
+            if next_obs_tensor.dim() == 1:
+                next_obs_tensor = next_obs_tensor.unsqueeze(0)  # Add batch dim
+
+            next_value = mappo_agent.critic(next_obs_tensor)
+
+
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
                 rollouts.append({
@@ -80,7 +98,8 @@ def main():
                     'reward': rewards[agent],
                     'done': dones[agent],
                     'next_state': next_obs[agent],
-                    'next_value': mappo_agent.critic(next_obs[agent]),
+                    'next_value': next_value,
+                    # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
 
                 episode_rewards[agent] += rewards[agent]  # Accumulate rewards

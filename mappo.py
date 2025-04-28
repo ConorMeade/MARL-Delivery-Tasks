@@ -88,7 +88,7 @@ class MAPPO:
         self.optimizer.step()
 
     def train(self, num_episodes=1000):
-        for episode in range(num_episodes):
+        for _ in range(num_episodes):
             rollouts = []
             obs = self.env.reset()
             done = False
@@ -103,6 +103,16 @@ class MAPPO:
                 # Step environment with actions
                 next_obs, rewards, dones, truncs, infos = self.env.step(actions)
 
+                next_obs_array = next_obs[agent]
+
+                if isinstance(next_obs_array, np.ndarray):
+                    next_obs_tensor = torch.tensor(next_obs_array, dtype=torch.float32)
+
+                if next_obs_tensor.dim() == 1:
+                    next_obs_tensor = next_obs_tensor.unsqueeze(0)  # Add batch dim
+
+                next_value = self.critic(next_obs_tensor)
+
                 # Compute the advantage and store the rollout
                 for agent in self.env.agents:
                     rollouts.append({
@@ -112,7 +122,8 @@ class MAPPO:
                         'reward': rewards[agent],
                         'done': dones[agent],
                         'next_state': next_obs[agent],
-                        'next_value': self.critic(next_obs[agent]),
+                        'next_value': next_value,
+                        # 'next_value': self.critic(next_obs[agent]),
                     })
 
                 obs = next_obs
