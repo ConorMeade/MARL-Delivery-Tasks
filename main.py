@@ -50,6 +50,7 @@ def main():
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
 
+        print(episode)
         if episode % 25 == 0:
             print(f'Episodes #{episode}')
         
@@ -57,6 +58,8 @@ def main():
 
         # Start episode loop
         while not all(done_flags.values()):
+            if any(done_flags.values()):
+                print(done_flags)
             actions = {}
             log_probs = {}
             # print('a')
@@ -64,7 +67,7 @@ def main():
             # Collect actions and log_probs for each agent
             # for agent in range(len(base_env.agents)):
             for agent in base_env.agents:
-                print(agent)
+                # print(agent)
                 if done_flags[agent] or agent not in obs:
                     continue
                 # print(agent)
@@ -103,12 +106,6 @@ def main():
                 if done_flags[agent]:
                     continue
 
-                # if agent in obs:
-                #     state = obs[agent]
-                # else:
-                #     state = np.zeros(obs_dim)
-
-
                 # if not terminations[agent]:
                 if agent in next_obs:
                     state = obs[agent]
@@ -141,8 +138,9 @@ def main():
                 episode_rewards[agent] += rewards[agent]  # Accumulate rewards
 
             obs = next_obs
+            print(terminations)
             done_flags.update(terminations)
-            terminations = any(terminations.values())  # Episode ends if any agent is done
+            # terminations = any(terminations.values())  # Episode ends if any agent is done
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:

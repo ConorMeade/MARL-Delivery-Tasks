@@ -10,7 +10,7 @@ class PickUpDropOffSimpleSpread:
             render_mode="human",
             N=3,
             local_ratio=0.5,
-            max_cycles=25,
+            max_cycles=200,
             continuous_actions=False
         )  
         self.env.reset(seed=seed)
@@ -116,21 +116,25 @@ class PickUpDropOffSimpleSpread:
             goal = self.agent_goals[agent]
 
             if not goal['reached_pickup']:
-                if np.linalg.norm(pos - goal['pickup']) < 0.1:
+                if np.linalg.norm(pos - goal['pickup']) < 0.7:
+                    print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
                     rewards_out[agent] += 1.0
                     infos_out[agent]['color'] = 'orange'
                 else:
                     infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
-                if np.linalg.norm(pos - goal['dropoff']) < 0.1:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.7:
+                    print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
                     rewards_out[agent] += 2.0
                     infos_out[agent]['color'] = 'green'
+                    term_out[agent] = True
                 else:
                     infos_out[agent]['color'] = 'orange'
             else:
                 infos_out[agent]['color'] = 'green'
+
 
             term_out[agent] = termination.get(agent, False)
             truncs_out[agent] = truncs.get(agent, False)  # Ensure truncs are passed
@@ -146,14 +150,14 @@ class PickUpDropOffSimpleSpread:
         else:
             return np.array(obs)
         
-    def compute_advantage(self, rollouts, gamma=0.99, lam=0.95):
-        advantages = []
-        last_gae_lam = 0
-        for r in reversed(rollouts):
-            reward = r['reward']
-            value = r['value']  # Placeholder for value prediction
-            next_value = r['next_value']  # Placeholder for next value (last timestep should be 0)
-            delta = reward + gamma * next_value - value
-            last_gae_lam = delta + gamma * lam * last_gae_lam
-            advantages.append(last_gae_lam)
-        return advantages[::-1] 
+    # def compute_advantage(self, rollouts, gamma=0.99, lam=0.95):
+    #     advantages = []
+    #     last_gae_lam = 0
+    #     for r in reversed(rollouts):
+    #         reward = r['reward']
+    #         value = r['value']  # Placeholder for value prediction
+    #         next_value = r['next_value']  # Placeholder for next value (last timestep should be 0)
+    #         delta = reward + gamma * next_value - value
+    #         last_gae_lam = delta + gamma * lam * last_gae_lam
+    #         advantages.append(last_gae_lam)
+    #     return advantages[::-1] 
