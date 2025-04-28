@@ -3,6 +3,8 @@ import numpy as np
 from PickUpDropOffSimpleSpread import PickUpDropOffSimpleSpread
 from mappo import MAPPO
 from actor_critic import Actor, Critic
+import matplotlib.pyplot as plt
+
 
 
 def flatten_obs(obs_dict):
@@ -11,7 +13,31 @@ def flatten_obs(obs_dict):
         parts.append(np.asarray(v).flatten())
     return np.concatenate(parts)
 
+def plot_rewards(cumulative_rewards, per_agent_rewards):
+    plt.plot(cumulative_rewards)
+    plt.xlabel('Episode')
+    plt.ylabel('Total Reward (All Agents)')
+    plt.title('Cumulative Episode Rewards')
+    plt.savefig('cumulative_rewards.png')
+    plt.close()
+
+    agent_names = list(per_agent_rewards[0].keys())
+
+    for agent in agent_names:
+        agent_rewards = [episode_rewards[agent] for episode_rewards in per_agent_rewards]
+        plt.plot(agent_rewards, label=agent)
+
+    plt.xlabel('Episode')
+    plt.ylabel('Reward')
+    plt.title('Per-Agent Cumulative Rewards')
+    plt.legend()
+    plt.savefig('per_agent_rewards.png') 
+    plt.close()  
+
 def main():
+    cumulative_rewards = []  # Total reward across all agents, per episode
+    per_agent_rewards_all = []  # Store per-agent rewards per episode
+
     # Initialize the environment (GoalBasedSimpleSpread)
     base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=100,num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     # sample_obs = base_env.reset()
@@ -60,6 +86,7 @@ def main():
             actions = {}
             log_probs = {}
 
+            episode_reward_single = 0
             # Collect actions and log_probs for each agent
             # for agent in range(len(base_env.agents)):
             for agent in base_env.agents:
@@ -141,10 +168,12 @@ def main():
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
         print(terminations)
-
+        cumulative_rewards.append(episode_reward_single)
+        per_agent_rewards_all.append(episode_rewards.copy())  # Store a copy!
         # Optional: Save model checkpoints or logging
         # if episode % checkpoint_interval == 0:
         #     torch.save(mappo_agent.actor.state_dict(), 'actor_checkpoint.pth')
         #     torch.save(mappo_agent.critic.state_dict(), 'critic_checkpoint.pth')
+    plot_rewards(cumulative_rewards, per_agent_rewards_all)
 
 main()
