@@ -132,15 +132,16 @@ class PickUpDropOffSimpleSpread:
                 if np.linalg.norm(pos - goal['pickup']) < 0.9:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
-                    self.agent_rewards_out[agent] += 1.0
+                    self.agent_rewards_out[agent] = 1.0
                     self.agent_infos_out[agent]['color'] = 'orange'
+                    # self.agent_infos_out['reached_pickup'] = True
                 else:
                     self.agent_infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
                 if np.linalg.norm(pos - goal['dropoff']) < 0.9:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
-                    self.agent_rewards_out[agent] += 2.0
+                    self.agent_rewards_out[agent] = 2.0
                     self.agent_infos_out[agent]['color'] = 'green'
                     self.agent_termination_flags[agent] = True
                 else:

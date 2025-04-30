@@ -104,24 +104,19 @@ def main():
             # Step the environment with the chosen actions
             next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
-            # if agent in next_obs:
-            #     next_obs_array = next_obs[agent]
-            # else:
-            #     next_obs_array = torch.tensor(0.0)
-
-            # if isinstance(next_obs_array, np.ndarray):
-            #     next_obs_tensor = torch.tensor(next_obs_array, dtype=torch.float32)
-
-            # if next_obs_tensor.dim() == 1:
-            #     next_obs_tensor = next_obs_tensor.unsqueeze(0)  # Add batch dim
-
-            # next_value = mappo_agent.critic(next_obs_tensor)
-
+            for agent in base_env.agents:
+                if terminations[agent] and episode_rewards[agent] == 1:
+                    episode_rewards[agent] += rewards[agent]
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
+                # if terminations[agent] and infos[agent]['color'] == 'green':
+                #     episode_rewards[agent] += rewards[agent]
+                #     continue
                 if terminations[agent]:
                     continue
+
+   
 
                 # if not terminations[agent]:
                 if agent in next_obs:
@@ -150,10 +145,15 @@ def main():
                     'next_value': next_value,
                     # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
-
-
+                # {'agent_0': {'color': 'red'}, 'agent_1': {'color': 'orange'}, 'agent_2': {'color': 'orange'}}
                 # if episode_rewards[agent] + rewards[agent] <= 3.0:  ## TODO: check this, sum is more than 3.0 without this check
-                episode_rewards[agent] += rewards[agent]  # Accumulate rewards
+
+                if infos[agent]['color'] == 'orange' and episode_rewards[agent] == 0:
+                    episode_rewards[agent] += rewards[agent]  
+                
+                # if infos[agent]['color'] == 'green':
+                    # print('avvd')
+                    # episode_rewards[agent] += rewards[agent]  
 
             obs = next_obs
             # print(terminations)
@@ -162,8 +162,8 @@ def main():
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
-                print('aaaa')
-                mappo_agent.update(rollouts)  # Update the model using the rollouts
+                # print('aaaa')
+                mappo_agent.update_mappo(rollouts)  # Update the model using the rollouts
                 rollouts = []  # Clear rollouts buffer for the next batch
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")

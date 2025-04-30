@@ -33,7 +33,7 @@ class MAPPO:
 
     #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
     #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
-    def update(self, rollouts):
+    def update_mappo(self, rollouts):
         # Unroll the stored rollouts into tensors
         # states = torch.stack([r['state'] for r in rollouts])
         states = torch.stack([
