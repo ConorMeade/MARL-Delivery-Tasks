@@ -30,6 +30,16 @@ class PickUpDropOffSimpleSpread:
         self.agent_goals = {}
         self._setup_task_goals()
 
+
+        self.agent_goals = defaultdict(dict)
+        for idx, agent in enumerate(self.agents):
+            task_idx = random.randint(0, self.num_tasks - 1)
+            self.agent_goals[agent] = {
+                'pickup': self.pickups[task_idx],
+                'dropoff': self.dropoffs[task_idx],
+                'reached_pickup': False,
+                'reached_dropoff': False
+            }
         # Observation and action spaces for each agent
         self.observation_spaces = self.env.observation_space
         self.action_spaces = self.env.action_space
@@ -47,16 +57,6 @@ class PickUpDropOffSimpleSpread:
 
         # print(self.pickups)
         # print(self.dropoffs)
-        
-        self.agent_goals = defaultdict(dict)
-        for idx, agent in enumerate(self.agents):
-            task_idx = random.randint(0, self.num_tasks - 1)
-            self.agent_goals[agent] = {
-                'pickup': self.pickups[task_idx],
-                'dropoff': self.dropoffs[task_idx],
-                'reached_pickup': False,
-                'reached_dropoff': False
-            }
 
     # def reset(self):
     #     obs = self.env.reset()  # Reset PettingZoo environment
@@ -72,7 +72,17 @@ class PickUpDropOffSimpleSpread:
         self.agent_rewards_out = {agent: 0.0 for agent in self.agents}
         self.agent_truncs_out = {agent: False for agent in self.agents}
         self.agent_infos_out = {agent: {} for agent in self.agents}
-        self._setup_task_goals()
+        # self._setup_task_goals()
+
+        self.agent_goals = defaultdict(dict)
+        for idx, agent in enumerate(self.agents):
+            task_idx = random.randint(0, self.num_tasks - 1)
+            self.agent_goals[agent] = {
+                'pickup': self.pickups[task_idx],
+                'dropoff': self.dropoffs[task_idx],
+                'reached_pickup': False,
+                'reached_dropoff': False
+            }
         self.step_count = 0
         obs_flat = {}
 
@@ -129,7 +139,7 @@ class PickUpDropOffSimpleSpread:
             goal = self.agent_goals[agent]
 
             if not goal['reached_pickup']:
-                if np.linalg.norm(pos - goal['pickup']) < 0.9:
+                if np.linalg.norm(pos - goal['pickup']) < 0.1:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
                     self.agent_rewards_out[agent] = 1.0
@@ -138,7 +148,7 @@ class PickUpDropOffSimpleSpread:
                 else:
                     self.agent_infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff']:
-                if np.linalg.norm(pos - goal['dropoff']) < 0.9:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.1:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
                     self.agent_rewards_out[agent] = 2.0
@@ -149,16 +159,11 @@ class PickUpDropOffSimpleSpread:
             else:
                 self.agent_infos_out[agent]['color'] = 'green'
 
-
-            # term_out[agent] = termination.get(agent, False)
-            # truncs_out[agent] = truncs.get(agent, False)  # Ensure truncs are passed
         if self.step_count >= self.max_cycles:
             terminations = {agent: True for agent in self.agents}
             return obs_flat, dict(self.agent_rewards_out), terminations, dict(self.agent_truncs_out), dict(self.agent_infos_out)
         else:
-        # return all_agent_status
             return obs_flat, dict(self.agent_rewards_out), dict(self.agent_termination_flags), dict(self.agent_truncs_out), dict(self.agent_infos_out)
-        # return next_obs, rewards, termination, truncs, infos
     
     def _flatten_if_needed(self, obs):
         """If obs is a dict, flatten it into a 1D array."""
@@ -166,15 +171,3 @@ class PickUpDropOffSimpleSpread:
             return np.concatenate([np.array(v).flatten() for v in obs.values()])
         else:
             return np.array(obs)
-        
-    # def compute_advantage(self, rollouts, gamma=0.99, lam=0.95):
-    #     advantages = []
-    #     last_gae_lam = 0
-    #     for r in reversed(rollouts):
-    #         reward = r['reward']
-    #         value = r['value']  # Placeholder for value prediction
-    #         next_value = r['next_value']  # Placeholder for next value (last timestep should be 0)
-    #         delta = reward + gamma * next_value - value
-    #         last_gae_lam = delta + gamma * lam * last_gae_lam
-    #         advantages.append(last_gae_lam)
-    #     return advantages[::-1] 

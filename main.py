@@ -39,41 +39,30 @@ def main():
     per_agent_rewards_all = []  # Store per-agent rewards per episode
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=100,num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
-    # sample_obs = base_env.reset()
-    # sample_flat_obs = flatten_obs(sample_obs[0])
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=150, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
 
-
-    # obs_dim = sample_flat_obs.shape[0]  # ← dynamic based on env
-    # act_dim = base_env.action_spaces[base_env.agents[0]].n
-    # print(base_env.observation_spaces(0))
-    # Define observation and action dimensions
-    # obs_dim = base_env.observation_spaces(base_env.agents[0]).shape[0]  # Size of observation space for an agent
-    # act_dim = base_env.action_spaces(base_env.agents[0]).n  # Size of action space for an agent
-
-    print(obs_dim)
-    print(act_dim)
-    # Instantiate Actor and Critic separately
-    actor = Actor(obs_dim=obs_dim, act_dim=act_dim)  # Instantiate the Actor
-    critic = Critic(obs_dim=obs_dim)  # Instantiate the Critic
-
-    # Initialize MAPPO model
+    # print(obs_dim)
+    # print(act_dim)
+    actor = Actor(obs_dim=obs_dim, act_dim=act_dim)
+    critic = Critic(obs_dim=obs_dim)
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 250
+    num_episodes = 100
     batch_size = 32
-    update_interval = 10  # Update the model after this many steps
-
+    # Should move this to MAPPO class
     for episode in range(num_episodes):
         obs = base_env.reset()  # Reset the environment and get initial observations
         done = False
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
+        
 
+        # print(base_env.pickups)
+        # print(base_env.dropoffs)
         if episode % 25 == 0:
             print(f'Episodes #{episode}')
         
