@@ -52,7 +52,7 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 500
+    num_episodes = 20
     batch_size = 64
     
     # Should move this to MAPPO class
