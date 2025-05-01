@@ -5,11 +5,11 @@ import numpy as np
 from actor_critic import Actor, Critic
 
 class MAPPO:
-    def __init__(self, env, actor_critic, lr=1e-4, gamma=0.99, gae_lambda=0.95, clip_epsilon=0.2, value_loss_coef=0.5, entropy_coef=0.01):
+    def __init__(self, env, actor_critic, lr=1e-4, gamma=0.99, gae_lambda=0.95, clip_epsilon=0.15, value_loss_coef=0.5, entropy_coef=0.01):
         self.env = env
         self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)  # Instantiate Actor
         self.critic = Critic(actor_critic.obs_dim)  # Instantiate Critic
-        self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=0.001)
+        self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=0.001, weight_decay=0.00001)
 
         # Hyperparams
         self.gamma = gamma
@@ -31,7 +31,6 @@ class MAPPO:
             advantages[t] = last_advantage
         return advantages
     
-
     #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
     #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
     def update_mappo(self, rollouts):
@@ -74,6 +73,7 @@ class MAPPO:
         # Compute the ratio of new and old log probs
         ratio = torch.exp(new_log_probs - old_log_probs)
 
+        # L^CLIP(θ) = E_t [ min( r_t(θ) * A_t, clip(r_t(θ), 1 - ε, 1 + ε) * A_t ) ]
         # Compute the policy loss (clipped PPO objective)
         policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 

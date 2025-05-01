@@ -16,7 +16,6 @@ class Actor(nn.Module):
         self.fc2 = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
         self.final_action_layer = nn.Linear(HIDDEN_SIZE, self.act_dim)
 
-
         # Shared fully connected layers
         # self.shared_fc = nn.Sequential(
         #     nn.Linear(obs_dim, HIDDEN_SIZE),
@@ -43,22 +42,12 @@ class Actor(nn.Module):
         
     #     return logits
 
-    # def act(self, obs):
-    #     """
-    #     Sample action based on the policy (Actor).
-    #     """
-    #     logits = self.forward(obs)
-        
-    #     dist = torch.distributions.Categorical(logits=logits)  # Discrete action space
-    #     action = dist.sample()
-    #     log_prob = dist.log_prob(action)
-        
-    #     return action, log_prob
-    
-    def act(self, obs):
+    def act(self, obs, epsilon=0.1):
         logits = self.forward(obs)
         probs = Functional.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
+        # if np.random.randn() < epsilon:
+            
         action = dist.sample()
         log_prob = dist.log_prob(action)
         return action, log_prob
@@ -110,10 +99,3 @@ class Critic(nn.Module):
         value = self.value_head(obs)
 
         return value.squeeze(-1)
-        # Shared feature extraction
-        # x = self.shared_fc(obs)
-        
-        # # Critic (state value)
-        # value = self.critic_fc(x)
-        
-        # return value

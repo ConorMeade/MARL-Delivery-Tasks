@@ -35,11 +35,12 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.close()  
 
 def main():
-    cumulative_rewards = []  # Total reward across all agents, per episode
-    per_agent_rewards_all = []  # Store per-agent rewards per episode
+    cumulative_rewards = []
+    per_agent_rewards_all = []
+    seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=150, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=50, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -51,8 +52,9 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 100
-    batch_size = 32
+    num_episodes = 500
+    batch_size = 64
+    
     # Should move this to MAPPO class
     for episode in range(num_episodes):
         obs = base_env.reset()  # Reset the environment and get initial observations
@@ -61,8 +63,8 @@ def main():
         rollouts = []  # Store rollouts for updating the model
         
 
-        # print(base_env.pickups)
-        # print(base_env.dropoffs)
+        print(base_env.pickups)
+        print(base_env.dropoffs)
         if episode % 25 == 0:
             print(f'Episodes #{episode}')
         
@@ -94,7 +96,7 @@ def main():
             next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
             for agent in base_env.agents:
-                if terminations[agent] and episode_rewards[agent] == 1:
+                if terminations[agent] and episode_rewards[agent] == 1 and infos[agent]['color'] == 'green':
                     episode_rewards[agent] += rewards[agent]
 
             # Store experiences in the rollouts buffer
@@ -145,24 +147,22 @@ def main():
                     # episode_rewards[agent] += rewards[agent]  
 
             obs = next_obs
-            # print(terminations)
             done_flags.update(terminations)
             # terminations = any(terminations.values())  # Episode ends if any agent is done
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
-                # print('aaaa')
+                # print('updated using rollouts')
                 mappo_agent.update_mappo(rollouts)  # Update the model using the rollouts
                 rollouts = []  # Clear rollouts buffer for the next batch
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
-        print(terminations)
-        cumulative_rewards.append(episode_reward_single)
+        # print(terminations)
+        cumulative_rewards.append(sum(episode_rewards.values()))
         per_agent_rewards_all.append(episode_rewards.copy())  # Store a copy!
-        # Optional: Save model checkpoints or logging
-        # if episode % checkpoint_interval == 0:
-        #     torch.save(mappo_agent.actor.state_dict(), 'actor_checkpoint.pth')
-        #     torch.save(mappo_agent.critic.state_dict(), 'critic_checkpoint.pth')
+
+
+
     plot_rewards(cumulative_rewards, per_agent_rewards_all)
 
 main()
