@@ -18,7 +18,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title('Cumulative Episode Rewards')
-    plt.savefig('cumulative_rewards_seed42.png')
+    plt.savefig('cumulative_rewards_seed42_just_pickup_noentp.png')
     plt.close()
 
     agent_names = list(per_agent_rewards[0].keys())
@@ -31,7 +31,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.ylabel('Reward')
     plt.title('Per-Agent Cumulative Rewards')
     plt.legend()
-    plt.savefig('per_agent_rewards_seed42.png') 
+    plt.savefig('per_agent_rewards_seed42_just_pickup_noentp.png') 
     plt.close()  
 
 def main():
@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=50, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=25, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -52,7 +52,7 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 30
+    num_episodes = 50
     batch_size = 32
     
     # Training loop
@@ -64,11 +64,13 @@ def main():
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
         
-
+        print(f'Starting Positions')
+        for i in range(len(base_env.fixed_positions)):
+            print(f'Agent {i} X: {base_env.fixed_positions[i][0]} Y: {base_env.fixed_positions[i][1]}')
         print(base_env.pickups)
         print(base_env.dropoffs)
         if episode % 25 == 0:
-            print(f'Episodes #{episode}')
+            print(f'Episode #{episode}')
         
         done_flags = {agent: False for agent in base_env.agents}
 
@@ -114,18 +116,14 @@ def main():
     
                 rollouts.append({
                     'state': state,
-                    # 'action': actions[agent],
                     'action': action_roll,
-                    # 'log_prob': log_probs[agent],
                     'log_prob': log_prob_roll,
                     'reward': rewards[agent],
                     'termination': terminations[agent],
-                    # 'next_state': next_obs[agent],
                     'next_state': next_state,
                     'next_value': next_value,
-                    # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
-                episode_rewards[agent] += rewards[agent]  
+                # episode_rewards[agent] += rewards[agent]  
 
             obs = next_obs
             done_flags.update(terminations)
@@ -136,6 +134,9 @@ def main():
                 # Update model using rollouts after we reach a full batch size
                 mappo_agent.update_mappo(rollouts, next_obs) 
                 rollouts = []
+
+        for agent in base_env.agents:
+            episode_rewards[agent] += rewards[agent]  
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
         # print(terminations)

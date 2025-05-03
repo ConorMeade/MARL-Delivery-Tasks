@@ -32,12 +32,15 @@ def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
     seeds = [42, 162, 120, 14, 45]
-    num_episodes = 500
-    batch_size = 64
+    num_episodes = 70
+    batch_size = 32
     for s in seeds:
+        cumulative_rewards = []
+        per_agent_rewards_all = []
+        # seeds = [42, 162, 120, 14, 45]
+
         # Initialize the environment (GoalBasedSimpleSpread)
-        cumulative_rewards = []  # Total reward across all agents, per episode
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=50, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
@@ -49,9 +52,12 @@ def main():
         mappo_agent = MAPPO(base_env, actor, critic)
 
         # Training parameters
-
+        # num_episodes = 30
+        # batch_size = 32
         
-        # Should move this to MAPPO class
+        # Training loop
+        # Reset env, generate rollouts
+        # After 32 rollouts have been generated, call update() to improve policy
         for episode in range(num_episodes):
             obs = base_env.reset()  # Reset the environment and get initial observations
             done = False
@@ -74,36 +80,23 @@ def main():
                 log_probs = {}
 
                 episode_reward_single = 0
-                # Collect actions and log_probs for each agent
-                # for agent in range(len(base_env.agents)):
+                # Determine actions and log_probs for each agent in this step sequence
+                # Call actor class to step based on actions selected with log_prob
                 for agent in base_env.agents:
-                    # print(agent)
                     if done_flags[agent] or agent not in obs:
                         continue
-                    # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32).unsqueeze(0)  # (1, obs_dim)
                     obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
-                    # obs_tensor = torch.tensor(obs[agent], dtype=torch.float32)
-                    action, log_prob = mappo_agent.actor.act(obs_tensor)  # Get action and log_prob from actor
-                    # action, log_prob = mappo_agent.actor.act(obs[agent])  # Get action and log_prob from actor
+                    action, log_prob = mappo_agent.actor.act(obs_tensor)
                     actions[agent] = int(action)
                     log_probs[agent] = log_prob
 
                 # Step the environment with the chosen actions
                 next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
-                for agent in base_env.agents:
-                    if terminations[agent] and episode_rewards[agent] == 1 and infos[agent]['color'] == 'green':
-                        episode_rewards[agent] += rewards[agent]
-
                 # Store experiences in the rollouts buffer
                 for agent in base_env.agents:
-                    # if terminations[agent] and infos[agent]['color'] == 'green':
-                    #     episode_rewards[agent] += rewards[agent]
-                    #     continue
                     if terminations[agent]:
                         continue
-
-    
 
                     # if not terminations[agent]:
                     if agent in next_obs:
@@ -132,15 +125,7 @@ def main():
                         'next_value': next_value,
                         # 'next_value': mappo_agent.critic(next_obs[agent]),
                     })
-                    # {'agent_0': {'color': 'red'}, 'agent_1': {'color': 'orange'}, 'agent_2': {'color': 'orange'}}
-                    # if episode_rewards[agent] + rewards[agent] <= 3.0:  ## TODO: check this, sum is more than 3.0 without this check
-
-                    if infos[agent]['color'] == 'orange' and episode_rewards[agent] == 0:
-                        episode_rewards[agent] += rewards[agent]  
-                    
-                    # if infos[agent]['color'] == 'green':
-                        # print('avvd')
-                        # episode_rewards[agent] += rewards[agent]  
+                    episode_rewards[agent] += rewards[agent]  
 
                 obs = next_obs
                 done_flags.update(terminations)
@@ -148,15 +133,14 @@ def main():
 
                 # Update the model at specified intervals
                 if len(rollouts) >= batch_size:
-                    # print('updated using rollouts')
-                    mappo_agent.update_mappo(rollouts)  # Update the model using the rollouts
-                    rollouts = []  # Clear rollouts buffer for the next batch
+                    # Update model using rollouts after we reach a full batch size
+                    mappo_agent.update_mappo(rollouts, next_obs) 
+                    rollouts = []
 
             print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
             # print(terminations)
             cumulative_rewards.append(sum(episode_rewards.values()))
-            # per_agent_rewards_all.append(episode_rewards.copy())  # Store a copy!
-
+            per_agent_rewards_all.append(episode_rewards.copy())
 
 
     plot_rewards(cumulative_rewards, num_episodes)

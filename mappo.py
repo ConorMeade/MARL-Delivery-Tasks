@@ -5,7 +5,7 @@ import numpy as np
 from actor_critic import Actor, Critic
 
 class MAPPO:
-    def __init__(self, env, actor_critic, lr=1e-4, gamma=0.99, gae_lambda=0.95, clip_epsilon=0.15, value_loss_coef=0.5, entropy_coef=0.01):
+    def __init__(self, env, actor_critic, lr=1e-4, gamma=0.95, gae_lambda=0.90, clip_epsilon=0.15, value_loss_coef=0.5, entropy_coef=0.01):
         self.env = env
         self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)  # Instantiate Actor
         self.critic = Critic(actor_critic.obs_dim)  # Instantiate Critic
@@ -78,8 +78,8 @@ class MAPPO:
         next_values = self.critic(next_states)
         # next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
-        print("Mean value:", values.mean().item())
-        print("Mean next_value:", next_values.mean().item())
+        # print("Mean value:", values.mean().item())
+        # print("Mean next_value:", next_values.mean().item())
         # if values != next_values:
             # print('vals change')
 
@@ -100,6 +100,8 @@ class MAPPO:
 
         # L^CLIP(θ) = E_t [ min( r_t(θ) * A_t, clip(r_t(θ), 1 - ε, 1 + ε) * A_t ) ]
         # Policy loss (clipped PPO objective)
+        # Avoid making large updates to a policy through clipping the probability ratio between new and old
+        # policies which allows learning to stabalize
         policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 
         # Compute the value loss (c_v)
