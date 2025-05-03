@@ -33,7 +33,7 @@ class MAPPO:
     
     #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
     #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
-    def update_mappo(self, rollouts):
+    def update_mappo(self, rollouts, next_obs):
         # convert rollouts into tensors
         states = torch.stack([
             torch.tensor(r['state'], dtype=torch.float32) for r in rollouts
@@ -50,6 +50,10 @@ class MAPPO:
         returns = torch.stack(
             [torch.tensor(r['reward'], dtype=torch.float32) for r in rollouts]
         )
+        next_states = torch.stack([torch.tensor(r['next_state'], dtype=torch.float32) for r in rollouts])
+        # next_obs = torch.stack(
+        #     [torch.tensor(r['next_value'], dtype=torch.float32) for r in rollouts]
+        # )
         # advantage is the diff between Q-value and the value function:
         # advantages = torch.stack([r['advantage'] for r in rollouts])
         terminations = torch.stack([torch.tensor(r['termination'], dtype=torch.float32) for r in rollouts])
@@ -58,8 +62,13 @@ class MAPPO:
         # Get values (both current and next) from the critic
         values = self.critic(states)
         # compute bootstrapped returns/advantages
-        next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
+        next_values = self.critic(next_states)
+        # next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
+        print("Mean value:", values.mean().item())
+        print("Mean next_value:", next_values.mean().item())
+        # if values != next_values:
+            # print('vals change')
 
         advantages = self.compute_advantages(returns, values, next_values, terminations)
         # advantages = torch.stack(

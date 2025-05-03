@@ -37,6 +37,8 @@ class PickUpDropOffSimpleSpread:
         self.agent_goals = {}
         self._setup_task_goals()
 
+        self.fixed_positions = None
+
         self.agent_goals = defaultdict(dict)
         for idx, agent in enumerate(self.agents):
             task_idx = random.randint(0, self.num_tasks - 1)
@@ -75,6 +77,17 @@ class PickUpDropOffSimpleSpread:
         self.agent_truncs_out = {agent: False for agent in self.agents}
         self.agent_infos_out = {agent: {} for agent in self.agents}
         # self._setup_task_goals()
+
+        if self.fixed_positions is None:
+            self.fixed_positions = []
+            for _ in self.env.unwrapped.world.agents:
+                pos = np.random.uniform(low=-0.8, high=0.8, size=(2,))
+                self.fixed_positions.append(pos)
+
+        for i, agent in enumerate(self.env.unwrapped.world.agents):
+            agent.state.p_po = self.fixed_positions[i]
+            agent.state.p_vel = np.zeros(2)
+
 
         self.agent_goals = defaultdict(dict)
         for idx, agent in enumerate(self.agents):
@@ -150,21 +163,20 @@ class PickUpDropOffSimpleSpread:
             # if goal['reached_pickup'] and not goal['reached_dropoff']:
                 # self.agent_infos_out[agent]['color'] = 'orange'
             if not goal['reached_pickup'] and not goal['pickup_reward']:
-                if np.linalg.norm(pos - goal['pickup']) < 0.7:
+                if np.linalg.norm(pos - goal['pickup']) < 0.2:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
                     goal['pickup_reward'] = True
-                    self.agent_rewards_out[agent] += 50
+                    self.agent_rewards_out[agent] += 1
                     self.agent_infos_out[agent]['color'] = 'orange'
                     # self.agent_infos_out['reached_pickup'] = True
                 # else:
                 #     self.agent_infos_out[agent]['color'] = 'red'
             elif not goal['reached_dropoff'] and not goal['dropoff_reward']:
-                if np.linalg.norm(pos - goal['dropoff']) < 0.7:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.2:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
                     goal['dropoff_reward'] = True
-                    self.agent_rewards_out[agent] += 100
                     self.agent_infos_out[agent]['color'] = 'green'
                     self.agent_goals[agent]['goals_completed'] += 1
                     self.agent_termination_flags[agent] = True
@@ -172,11 +184,14 @@ class PickUpDropOffSimpleSpread:
                     # So, if more tasks need to be completed, make it so we can
                     # still enter these if statements again
                     if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
+                        self.agent_rewards_out[agent] += 2
                         goal['reached_pickup'] = False
                         goal['reached_dropoff'] = False
                         goal['pickup_reward'] = False
                         goal['dropoff_reward'] = False
                         self.agent_termination_flags[agent] = False
+                    if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
+                        self.agent_rewards_out[agent] += 2
                     # if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
 
                 # else:

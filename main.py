@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=70, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=80, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -52,7 +52,7 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 20
+    num_episodes = 45
     batch_size = 64
     
     # Should move this to MAPPO class
@@ -140,7 +140,6 @@ def main():
                     # 'next_value': mappo_agent.critic(next_obs[agent]),
                 })
                 # {'agent_0': {'color': 'red'}, 'agent_1': {'color': 'orange'}, 'agent_2': {'color': 'orange'}}
-                # if episode_rewards[agent] + rewards[agent] <= 3.0:  ## TODO: check this, sum is more than 3.0 without this check
 
                 # if infos[agent]['color'] == 'orange' and episode_rewards[agent] == 0:
                 episode_rewards[agent] += rewards[agent]  
@@ -155,15 +154,14 @@ def main():
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
-                # print('updated using rollouts')
-                mappo_agent.update_mappo(rollouts)  # Update the model using the rollouts
-                rollouts = []  # Clear rollouts buffer for the next batch
+                # Update model using rollouts after we reach a full batch size
+                mappo_agent.update_mappo(rollouts, next_obs) 
+                rollouts = []
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
         # print(terminations)
         cumulative_rewards.append(sum(episode_rewards.values()))
-        per_agent_rewards_all.append(episode_rewards.copy())  # Store a copy!
-
+        per_agent_rewards_all.append(episode_rewards.copy())
 
 
     plot_rewards(cumulative_rewards, per_agent_rewards_all)

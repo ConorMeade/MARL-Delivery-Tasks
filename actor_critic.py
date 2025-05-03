@@ -50,7 +50,9 @@ class Actor(nn.Module):
         probs = Functional.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
         # if np.random.randn() < epsilon:
-            
+            # action = np.random.randint(probs.shape[-1])
+            # log_prob = torch.log(probs.squeeze(0)[action] + 1e-10)
+        # else:
         action = dist.sample()
         # get logarithm of probability values
         log_prob = dist.log_prob(action)
