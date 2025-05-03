@@ -45,6 +45,8 @@ class PickUpDropOffSimpleSpread:
                 'dropoff': self.dropoffs[task_idx],
                 'reached_pickup': False,
                 'reached_dropoff': False,
+                'pickup_reward': False,
+                'dropoff_reward': False,
                 'goals_completed': 0
             }
         # Observation and action spaces for each agent
@@ -82,6 +84,8 @@ class PickUpDropOffSimpleSpread:
                 'dropoff': self.dropoffs[task_idx],
                 'reached_pickup': False,
                 'reached_dropoff': False,
+                'pickup_reward': False,
+                'dropoff_reward': False,
                 'goals_completed': 0
             }
         self.step_count = 0
@@ -96,7 +100,11 @@ class PickUpDropOffSimpleSpread:
         self.step_count += 1
         # Ensure all actions are int
         # actions = {agent: int(action) for agent, action in actions.items()}
-        actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
+        # actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
+
+        for agent in self.agents:
+            if agent not in actions:
+                actions[agent] = 0
 
         for agent, action in actions.items():
             assert self.action_spaces(agent).contains(action), f"Invalid action {action} for {agent}"
@@ -104,11 +112,20 @@ class PickUpDropOffSimpleSpread:
         # Step the environment with the given actions
         observation, rewards, termination, truncs, infos = self.env.step(actions)
 
+        if rewards['agent_0'] != rewards['agent_1'] or rewards['agent_1'] != rewards['agent_2'] or rewards['agent_0'] != rewards['agent_2']:
+            print('rewards changed') 
+
+        # if rewards['agent_0'] < -1.0:
+            # print('negativeeee')
         obs_flat = {}
         for agent, raw_obs in observation.items():
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
         # next_obs, rewards, termination, truncs, infos = self.env.last()
-
+        
+        # add rewards from pettingzoo step func 
+        # clip rewards so they don't impact learning too much
+        for agent, reward in rewards.items():
+            self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
         for agent in self.agents:
@@ -129,30 +146,43 @@ class PickUpDropOffSimpleSpread:
             # pos = self.env.state(agent)["p_pos"]
             goal = self.agent_goals[agent]
 
-
             # current status
-            if not goal['reached_pickup']:
-                if np.linalg.norm(pos - goal['pickup']) < 0.15:
+            # if goal['reached_pickup'] and not goal['reached_dropoff']:
+                # self.agent_infos_out[agent]['color'] = 'orange'
+            if not goal['reached_pickup'] and not goal['pickup_reward']:
+                if np.linalg.norm(pos - goal['pickup']) < 0.7:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
-                    self.agent_rewards_out[agent] = 1.0
+                    goal['pickup_reward'] = True
+                    self.agent_rewards_out[agent] += 50
                     self.agent_infos_out[agent]['color'] = 'orange'
                     # self.agent_infos_out['reached_pickup'] = True
-                else:
-                    self.agent_infos_out[agent]['color'] = 'red'
-            elif not goal['reached_dropoff']:
-                if np.linalg.norm(pos - goal['dropoff']) < 0.15:
+                # else:
+                #     self.agent_infos_out[agent]['color'] = 'red'
+            elif not goal['reached_dropoff'] and not goal['dropoff_reward']:
+                if np.linalg.norm(pos - goal['dropoff']) < 0.7:
                     print(f'{agent} reached goal 2')
                     goal['reached_dropoff'] = True
-                    self.agent_rewards_out[agent] = 2.0
+                    goal['dropoff_reward'] = True
+                    self.agent_rewards_out[agent] += 100
                     self.agent_infos_out[agent]['color'] = 'green'
                     self.agent_goals[agent]['goals_completed'] += 1
-                    # if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
                     self.agent_termination_flags[agent] = True
-                else:
-                    self.agent_infos_out[agent]['color'] = 'orange'
-            else:
-                self.agent_infos_out[agent]['color'] = 'green'
+                    # Do a per task reset
+                    # So, if more tasks need to be completed, make it so we can
+                    # still enter these if statements again
+                    if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
+                        goal['reached_pickup'] = False
+                        goal['reached_dropoff'] = False
+                        goal['pickup_reward'] = False
+                        goal['dropoff_reward'] = False
+                        self.agent_termination_flags[agent] = False
+                    # if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
+
+                # else:
+                #     self.agent_infos_out[agent]['color'] = 'orange'
+            # else:
+            #     self.agent_infos_out[agent]['color'] = 'green'
 
         if self.step_count >= self.max_cycles:
             terminations = {agent: True for agent in self.agents}

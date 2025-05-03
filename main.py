@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=50, num_tasks=1)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=70, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -95,9 +95,12 @@ def main():
             # Step the environment with the chosen actions
             next_obs, rewards, terminations, truncs, infos = base_env.step_pickup_drop(actions)
 
-            for agent in base_env.agents:
-                if terminations[agent] and episode_rewards[agent] == 1 and infos[agent]['color'] == 'green':
-                    episode_rewards[agent] += rewards[agent]
+            # for agent in base_env.agents:
+                # if terminations[agent] and episode_rewards[agent] == 1 and infos[agent]['color'] == 'green':
+                    # episode_rewards[agent] += rewards[agent]
+
+            # for agent in base_env.agents:
+                # episode_rewards[agent] += rewards[agent]
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
@@ -139,8 +142,8 @@ def main():
                 # {'agent_0': {'color': 'red'}, 'agent_1': {'color': 'orange'}, 'agent_2': {'color': 'orange'}}
                 # if episode_rewards[agent] + rewards[agent] <= 3.0:  ## TODO: check this, sum is more than 3.0 without this check
 
-                if infos[agent]['color'] == 'orange' and episode_rewards[agent] == 0:
-                    episode_rewards[agent] += rewards[agent]  
+                # if infos[agent]['color'] == 'orange' and episode_rewards[agent] == 0:
+                episode_rewards[agent] += rewards[agent]  
                 
                 # if infos[agent]['color'] == 'green':
                     # print('avvd')

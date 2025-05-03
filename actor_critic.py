@@ -12,8 +12,11 @@ class Actor(nn.Module):
         self.act_dim = act_dim
 
         # apply linear transformation y = xA^T + b
+        # hidden layer 1, 18 X 128
         self.fc1 = nn.Linear(self.obs_dim, HIDDEN_SIZE)
+        # hidden layer 2 128 x 128
         self.fc2 = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
+        # Final action layer 128 x 5
         self.final_action_layer = nn.Linear(HIDDEN_SIZE, self.act_dim)
 
         # Shared fully connected layers
@@ -49,6 +52,7 @@ class Actor(nn.Module):
         # if np.random.randn() < epsilon:
             
         action = dist.sample()
+        # get logarithm of probability values
         log_prob = dist.log_prob(action)
         return action, log_prob
 

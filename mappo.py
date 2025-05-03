@@ -57,6 +57,7 @@ class MAPPO:
 
         # Get values (both current and next) from the critic
         values = self.critic(states)
+        # compute bootstrapped returns/advantages
         next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
 
@@ -68,22 +69,25 @@ class MAPPO:
         # Get new log probs and values
         new_log_probs = self.actor.evaluate_actions(states, actions)
         new_values = self.critic(states)
+
+        # average uncertainty over all possible actions with entropy, higher entropy values indicate more explorationx
         entropy = self.actor.get_entropy(states)
 
-        # Compute the ratio of new and old log probs
+        # Determine ratio of new and old log probs, used in PPO
         ratio = torch.exp(new_log_probs - old_log_probs)
 
         # L^CLIP(θ) = E_t [ min( r_t(θ) * A_t, clip(r_t(θ), 1 - ε, 1 + ε) * A_t ) ]
-        # Compute the policy loss (clipped PPO objective)
+        # Policy loss (clipped PPO objective)
         policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 
-        # Compute the value loss
+        # Compute the value loss (c_v)
         value_loss = self.value_loss_coef * (returns - new_values).pow(2).mean()
 
         # Compute the entropy loss
         entropy_loss = -self.entropy_coef * entropy.mean()
 
         # Total loss
+        # L_total = L_Policy + c_v * L_value_loss * policy entropy
         loss = policy_loss + value_loss + entropy_loss
 
         # Backpropagation
