@@ -125,8 +125,8 @@ class PickUpDropOffSimpleSpread:
         # Step the environment with the given actions
         observation, rewards, termination, truncs, infos = self.env.step(actions)
 
-        if rewards['agent_0'] != rewards['agent_1'] or rewards['agent_1'] != rewards['agent_2'] or rewards['agent_0'] != rewards['agent_2']:
-            print('rewards changed') 
+        # if rewards['agent_0'] != rewards['agent_1'] or rewards['agent_1'] != rewards['agent_2'] or rewards['agent_0'] != rewards['agent_2']:
+        #     print('rewards changed') 
 
         # if rewards['agent_0'] < -1.0:
             # print('negativeeee')
@@ -167,7 +167,7 @@ class PickUpDropOffSimpleSpread:
                     print(f'{agent} reached goal 1')
                     goal['reached_pickup'] = True
                     goal['pickup_reward'] = True
-                    self.agent_rewards_out[agent] += 1
+                    self.agent_rewards_out[agent] += 10
                     self.agent_infos_out[agent]['color'] = 'orange'
                     # self.agent_infos_out['reached_pickup'] = True
                 # else:
@@ -178,7 +178,7 @@ class PickUpDropOffSimpleSpread:
                     goal['reached_dropoff'] = True
                     goal['dropoff_reward'] = True
                     self.agent_infos_out[agent]['color'] = 'green'
-                    self.agent_goals[agent]['goals_completed'] += 1
+                    self.agent_goals[agent]['goals_completed'] += 5
                     self.agent_termination_flags[agent] = True
                     # Do a per task reset
                     # So, if more tasks need to be completed, make it so we can

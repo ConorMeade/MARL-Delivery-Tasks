@@ -46,6 +46,12 @@ class Actor(nn.Module):
     #     return logits
 
     def act(self, obs, epsilon=0.1):
+        '''Determne agent action based on observations
+            forward() call to determine our logits, logits used
+            in softmax() call to get probabilities. Softmax()
+            will normalize network output to a probability
+            distribution.
+        '''
         logits = self.forward(obs)
         probs = Functional.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
@@ -60,7 +66,9 @@ class Actor(nn.Module):
 
     def evaluate_actions(self, obs, actions):
         """
-        Compute log probability for given actions.
+        Evaluate how good current policy is at choosing previously sampled actions
+
+        Used in computation of log probability ratio in PPO
         """
         logits = self.forward(obs)
         probs = Functional.softmax(logits, dim=-1)
@@ -69,6 +77,14 @@ class Actor(nn.Module):
         return log_probs
     
     def get_entropy(self, states):
+        '''
+        Encourage exploration by penalizing overly confident policies
+
+            Higher Entropy -> policy is less certain, more exploration happened
+            Lower Entropy -> policy is more certain, more exploitation happened
+        For PPO, the goal should be to maximize entropy while optimizer
+        will minimize total loss
+        '''
         logits = self.forward(states)
         probs = Functional.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
@@ -94,6 +110,10 @@ class Critic(nn.Module):
         # self.critic_fc = nn.Linear(HIDDEN_SIZE, 1)
 
     def forward(self, obs):
+        '''Returns a scalar value of expected future rewards
+            Uses our 2 hidden layers: fc1 and fc2
+            To be used in value loss and GAE.
+        '''
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float32)
 

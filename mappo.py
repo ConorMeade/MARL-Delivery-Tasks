@@ -20,12 +20,15 @@ class MAPPO:
 
     def compute_advantages(self, rewards, values, next_values, dones):
         # compare how well an action is compared to average action using generalize advantage estimation (GAE)
+        # reduce variance of policy gradient estimates
         advantages = torch.zeros_like(rewards)
         last_advantage = 0
+
         for t in reversed(range(len(rewards))):
             if dones[t]:
                 delta = rewards[t] - values[t]
             else:
+                # compute TD error
                 delta = rewards[t] + self.gamma * next_values[t] - values[t]
             last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
             advantages[t] = last_advantage
@@ -34,6 +37,16 @@ class MAPPO:
     #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
     #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
     def update_mappo(self, rollouts, next_obs):
+        '''
+            Convert rollouts we get from training loops into tensors for states, action, log_prob,
+            rewards, next_states, and terminations.
+
+            Use critic object to get values of current states and values from next_states.
+
+            Call compute_advantages() to generate A_t in MAPPO. This will allow use to compare the value
+            of an action to how good it is compared to the average action
+        
+        '''
         # convert rollouts into tensors
         states = torch.stack([
             torch.tensor(r['state'], dtype=torch.float32) for r in rollouts
@@ -92,7 +105,7 @@ class MAPPO:
         # Compute the value loss (c_v)
         value_loss = self.value_loss_coef * (returns - new_values).pow(2).mean()
 
-        # Compute the entropy loss
+        # Compute the entropy loss, to maximize entropy, we subtract it from the total loss (loss var here)
         entropy_loss = -self.entropy_coef * entropy.mean()
 
         # Total loss
