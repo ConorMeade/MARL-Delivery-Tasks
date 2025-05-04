@@ -2,25 +2,19 @@ import numpy as np
 import random
 from collections import defaultdict
 from pettingzoo.mpe import simple_spread_v3
-from enum import Enum
 
-# class PickUpStatus(Enum):
-#     HASPICKUP = 1
-#     DROPPEDOFF = 2
-#     COMPLETEDTASKS = 3
-#     NOPICKUP = 4
 
 class PickUpDropOffSimpleSpread:
-    def __init__(self, seed, max_cycles, num_tasks=2):
+    def __init__(self, seed, max_cycles, num_tasks=1):
         self.env = simple_spread_v3.parallel_env(
             render_mode="human",
-            N=3,
+            N=1,
             local_ratio=0.5,
             max_cycles=max_cycles
         )
         self.seed = seed
         # self.env(seed)
-        self.env.reset(seed=self.seed)
+        self.env.reset(seed=seed)
         self.num_tasks = num_tasks
         # self.observations, self.infos = self.env
         self.agents = list(self.env.agents)
@@ -130,7 +124,8 @@ class PickUpDropOffSimpleSpread:
         # clip rewards so they don't impact learning too much
         for agent, reward in rewards.items():
             if not self.agent_termination_flags[agent]:
-                self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
+                self.agent_rewards_out[agent] += reward
+                # self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
         for agent in self.agents:
@@ -178,13 +173,13 @@ class PickUpDropOffSimpleSpread:
 
                     self.agent_goals[agent]['goals_completed'] += 1
                     if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
-                        self.agent_rewards_out[agent] += 2
+                        self.agent_rewards_out[agent] += 10
                         goal['reached_pickup'] = False
                         goal['pickup_reward'] = False
                         self.agent_termination_flags[agent] = False
 
                     if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
-                        self.agent_rewards_out[agent] += 2
+                        self.agent_rewards_out[agent] += 10
                         goal['reached_pickup'] = True
                         goal['pickup_reward'] = True
                         self.agent_termination_flags[agent] = True

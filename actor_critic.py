@@ -20,32 +20,12 @@ class Actor(nn.Module):
         # Final action layer 64 x 5, compress again to the 5 actions an agent can take with probabilities
         self.final_action_layer = nn.Linear(64, self.act_dim)
 
-        # Shared fully connected layers
-        # self.shared_fc = nn.Sequential(
-        #     nn.Linear(obs_dim, HIDDEN_SIZE),
-        #     nn.ReLU(),
-        #     nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
-        #     nn.ReLU()
-        # )
-        
-        # Actor network (outputs action probabilities)
-        # self.actor_fc = nn.Linear(HIDDEN_SIZE, act_dim)
     def forward(self, obs):
         obs = Functional.relu(self.fc1(obs))
         obs = Functional.relu(self.fc2(obs))
         logits = self.final_action_layer(obs)
         return logits
     
-
-    # def forward(self, obs):
-    #     # Shared feature extraction
-    #     x = self.shared_fc(obs)
-        
-    #     # Actor (action probabilities)
-    #     logits = self.actor_fc(x)
-        
-    #     return logits
-
     def act(self, obs, epsilon=0.1):
         '''
             Determne agent action based on observations
@@ -53,6 +33,8 @@ class Actor(nn.Module):
             in softmax() call to get probabilities. Softmax()
             will normalize network output to a probability
             distribution.
+
+            Agent action space: [no_action, move_left, move_right, move_down, move_up]
         '''
         logits = self.forward(obs)
         probs = Functional.softmax(logits, dim=-1)
@@ -101,22 +83,14 @@ class Critic(nn.Module):
         self.fc1 = nn.Linear(self.obs_dim, HIDDEN_SIZE)
         self.fc2 = nn.Linear(HIDDEN_SIZE, 64)
         self.value_head = nn.Linear(64, 1)
-        # Shared fully connected layers
-        # self.shared_fc = nn.Sequential(
-        #     nn.Linear(obs_dim, HIDDEN_SIZE),
-        #     nn.ReLU(),
-        #     nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE),
-        #     nn.ReLU()
-        # )
-        
-        # # Critic network (outputs state value)
-        # self.critic_fc = nn.Linear(HIDDEN_SIZE, 1)
 
     def forward(self, obs):
         '''
             Returns a scalar value of expected future rewards
             Uses our 2 hidden layers: fc1 and fc2
             To be used in value loss and GAE.
+
+            Implicitly called when we invoke critic (e.g. self.critic(states))
         '''
         if isinstance(obs, np.ndarray):
             obs = torch.tensor(obs, dtype=torch.float32)

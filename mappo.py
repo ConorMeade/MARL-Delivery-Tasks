@@ -9,6 +9,7 @@ class MAPPO:
         self.env = env
         self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)
         self.critic = Critic(actor_critic.obs_dim)
+        # Adam gradient descent
         self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=0.001, weight_decay=0.00001)
 
         self.gamma = gamma
@@ -74,8 +75,10 @@ class MAPPO:
 
         # Get values (both current and next) from the critic
         values = self.critic(states)
+
+        next_values = torch.tensor([r['next_value'] for r in rollouts], dtype=torch.float32)
         # compute bootstrapped returns/advantages
-        next_values = self.critic(next_states)
+        # next_values = self.critic(next_states)
         # next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
         # print("Mean value:", values.mean().item())
@@ -110,7 +113,7 @@ class MAPPO:
         # Compute the entropy loss, to maximize entropy, we subtract it from the total loss (loss var here)
         entropy_loss = -self.entropy_coef * entropy.mean()
 
-        # Total loss
+        # Total loss, entropy regularization
         # L_total = L_Policy + c_v * L_value_loss * policy entropy
         loss = policy_loss + value_loss + entropy_loss
 

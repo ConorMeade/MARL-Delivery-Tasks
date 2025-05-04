@@ -4,7 +4,7 @@ from PickUpDropOffSimpleSpread import PickUpDropOffSimpleSpread
 from mappo import MAPPO
 from actor_critic import Actor, Critic
 import matplotlib.pyplot as plt
-
+from collections import defaultdict
 
 
 def flatten_obs(obs_dict):
@@ -18,7 +18,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title('Cumulative Episode Rewards')
-    plt.savefig('cumulative_rewards_seed42_just_pickup_noentp.png')
+    plt.savefig('cumulative_rewards_UPDATED.png')
     plt.close()
 
     agent_names = list(per_agent_rewards[0].keys())
@@ -31,7 +31,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.ylabel('Reward')
     plt.title('Per-Agent Cumulative Rewards')
     plt.legend()
-    plt.savefig('per_agent_rewards_seed42_just_pickup_noentp.png') 
+    plt.savefig('per_agent_rewards_seed42_UPDATED.png') 
     plt.close()  
 
 def main():
@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=45, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -52,8 +52,8 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 50
-    batch_size = 32
+    num_episodes = 45
+    batch_size = 128
     
     # Training loop
     # Reset env, generate rollouts
@@ -74,6 +74,7 @@ def main():
         
         done_flags = {agent: False for agent in base_env.agents}
 
+        rewards_per_agent = defaultdict(float)
         # Start episode loop
         while not all(done_flags.values()):
             # if any(done_flags.values()):
@@ -97,15 +98,18 @@ def main():
 
             # Store experiences in the rollouts buffer
             for agent in base_env.agents:
+                term = terminations.get(agent, False) or truncs.get(agent, False)
+                reward = rewards.get(agent, 0.0)
+                rewards_per_agent[agent] += reward
                 if terminations[agent]:
                     continue
-
+                # next_state = next_obs[agent] if not done and agent in next_obs else np.zeros_like(obs[agent])
                 # if not terminations[agent]:
                 if agent in next_obs:
                     state = obs[agent]
                     next_state = next_obs[agent]
                     next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
-                    next_value = mappo_agent.critic(next_state_tensor).squeeze()
+                    next_value = mappo_agent.critic(next_state_tensor).item()
                 else:
                     state = np.zeros(obs_dim)
                     next_state = np.zeros(obs_dim, dtype=np.float32) # zeros with same shape
@@ -116,10 +120,11 @@ def main():
     
                 rollouts.append({
                     'state': state,
-                    'action': action_roll,
+                    # 'action': action_roll,
+                    'action': actions[agent],
                     'log_prob': log_prob_roll,
-                    'reward': rewards[agent],
-                    'termination': terminations[agent],
+                    'reward': reward,
+                    'termination': term,
                     'next_state': next_state,
                     'next_value': next_value,
                 })
