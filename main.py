@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=25, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -67,8 +67,8 @@ def main():
         print(f'Starting Positions')
         for i in range(len(base_env.fixed_positions)):
             print(f'Agent {i} X: {base_env.fixed_positions[i][0]} Y: {base_env.fixed_positions[i][1]}')
-        print(base_env.pickups)
-        print(base_env.dropoffs)
+        print(f'Pickup locations: {base_env.pickups}')
+        print(f'Drop off Locations: {base_env.dropoffs}')
         if episode % 25 == 0:
             print(f'Episode #{episode}')
         

@@ -7,11 +7,10 @@ from actor_critic import Actor, Critic
 class MAPPO:
     def __init__(self, env, actor_critic, lr=1e-4, gamma=0.95, gae_lambda=0.90, clip_epsilon=0.15, value_loss_coef=0.5, entropy_coef=0.01):
         self.env = env
-        self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)  # Instantiate Actor
-        self.critic = Critic(actor_critic.obs_dim)  # Instantiate Critic
+        self.actor = Actor(actor_critic.obs_dim, actor_critic.act_dim)
+        self.critic = Critic(actor_critic.obs_dim)
         self.optimizer = optim.Adam(list(self.actor.parameters()) + list(self.critic.parameters()), lr=0.001, weight_decay=0.00001)
 
-        # Hyperparams
         self.gamma = gamma
         self.gae_lambda = gae_lambda
         self.clip_epsilon = clip_epsilon
@@ -47,6 +46,7 @@ class MAPPO:
             of an action to how good it is compared to the average action
         
         '''
+        # print('Updating Policy...')
         # convert rollouts into tensors
         states = torch.stack([
             torch.tensor(r['state'], dtype=torch.float32) for r in rollouts

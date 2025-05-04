@@ -13,11 +13,12 @@ class Actor(nn.Module):
 
         # apply linear transformation y = xA^T + b
         # hidden layer 1, 18 X 128
+        # handles raw input of actions and projects to HIDDEN_SIZE dimensions
         self.fc1 = nn.Linear(self.obs_dim, HIDDEN_SIZE)
-        # hidden layer 2 128 x 128
-        self.fc2 = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-        # Final action layer 128 x 5
-        self.final_action_layer = nn.Linear(HIDDEN_SIZE, self.act_dim)
+        # hidden layer 2 128 x 64, compress actions
+        self.fc2 = nn.Linear(HIDDEN_SIZE, 64)
+        # Final action layer 64 x 5, compress again to the 5 actions an agent can take with probabilities
+        self.final_action_layer = nn.Linear(64, self.act_dim)
 
         # Shared fully connected layers
         # self.shared_fc = nn.Sequential(
@@ -98,8 +99,8 @@ class Critic(nn.Module):
         super(Critic, self).__init__()
         self.obs_dim = obs_dim
         self.fc1 = nn.Linear(self.obs_dim, HIDDEN_SIZE)
-        self.fc2 = nn.Linear(HIDDEN_SIZE, HIDDEN_SIZE)
-        self.value_head = nn.Linear(HIDDEN_SIZE, 1)
+        self.fc2 = nn.Linear(HIDDEN_SIZE, 64)
+        self.value_head = nn.Linear(64, 1)
         # Shared fully connected layers
         # self.shared_fc = nn.Sequential(
         #     nn.Linear(obs_dim, HIDDEN_SIZE),

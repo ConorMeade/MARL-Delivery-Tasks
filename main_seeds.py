@@ -13,34 +13,76 @@ def flatten_obs(obs_dict):
         parts.append(np.asarray(v).flatten())
     return np.concatenate(parts)
 
-def plot_rewards(cumulative_rewards, num_episodes):
-    all_rewards = np.array(cumulative_rewards)
+def plot_rewards(cumulative_rewards, num_episodes, num_seeds):
+    # all_rewards = np.array([
+    #     [episode_rewards[ep] for ep in sorted(episode_rewards)]
+    #     for episode_rewards in cumulative_rewards
+    # ])
 
-    mean_reward = np.mean(all_rewards, axis=0)
-    std_reward = np.std(all_rewards)
 
-    plt.plot(mean_reward, label='Mean Reward')
-    plt.fill_between(np.arange(num_episodes), mean_reward - std_reward, mean_reward + std_reward, alpha=0.2, label='Standard Deviation')
+    all_rewards = np.array([
+        list(episode) for episode in cumulative_rewards
+    ])
+
+    print(type(cumulative_rewards))
+    print(len(cumulative_rewards))  # should be num_seeds
+    print(type(cumulative_rewards[0]))
+    print(len(cumulative_rewards[0]))  # should be num_episodes
+
+    # rewards_across_seeds = [num_seeds, num_episodes]
+    mean_rewards = all_rewards.mean(axis=0)
+    std_rewards = all_rewards.std(axis=0)
+    # std_rewards = np.std(all_rewards)
+
+
+    plt.figure(figsize=(6, 4))
+    plt.errorbar(range(len(mean_rewards)), mean_rewards, yerr=std_rewards, label='Mean ± Std Dev', fmt='-o', capsize=3)
     plt.xlabel('Episode')
     plt.ylabel('Cumulative Reward')
-    plt.title('Learning Curve Across Seeds')
+    plt.title('Learning Curve with Standard Deviation')
     plt.legend()
-    plt.savefig('Mean and Std Dev Rewards Diff Seeds.png') 
-    plt.close()  
+    plt.grid(True)
+    plt.tight_layout()
+    plt.savefig("learning_curve_with_std.png")
+    # plt.plot(mean_rewards, label='Mean Reward')
+    # plt.fill_between(np.arange(num_episodes), mean_rewards - std_rewards, mean_rewards + std_rewards, alpha=0.2, label='Standard Deviation')
+    # plt.xlabel('Episode')
+    # plt.ylabel('Cumulative Reward')
+    # plt.title('Learning Curve Across Seeds (3 Seeds, 3 Actors)')
+    # plt.legend()
+    # # plt.savefig('Mean and Std Dev Rewards Diff Seeds.png') 
+    # plt.close()  
+
+    # Plotting mean and std deviation
+    # plt.figure(figsize=(8, 6))
+    # plt.plot(mean_rewards, label='Mean Reward')
+    # plt.fill_between(range(num_episodes),
+    #                 mean_rewards - std_rewards,
+    #                 mean_rewards + std_rewards,
+    #                 alpha=0.3, label='±1 Std Dev')
+    # plt.xlabel('Episode')
+    # plt.ylabel('Cumulative Reward')
+    # plt.title('MAPPO Training Performance Across 5 Seeds')
+    # plt.legend()
+    # plt.grid(True)
+    plt.savefig('mappo_performance_across_seeds.png')
+    plt.close()
 
 def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
-    seeds = [42, 162, 120, 14, 45]
-    num_episodes = 70
+    # seeds = [42, 162, 120, 14, 45]
+    seeds = [163]
+    num_episodes = 5
     batch_size = 32
+    cumulative_rewards = []
+    per_agent_rewards_all = []
     for s in seeds:
-        cumulative_rewards = []
-        per_agent_rewards_all = []
+
         # seeds = [42, 162, 120, 14, 45]
 
         # Initialize the environment (GoalBasedSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=50, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=20, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
@@ -64,9 +106,12 @@ def main():
             episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
             rollouts = []  # Store rollouts for updating the model
             
-
-            print(base_env.pickups)
-            print(base_env.dropoffs)
+            print(f'Starting Positions')
+            for i in range(len(base_env.fixed_positions)):
+                print(f'Agent {i} X: {base_env.fixed_positions[i][0]} Y: {base_env.fixed_positions[i][1]}')
+            print(f'Pickup locations: {base_env.pickups}')
+            print(f'Drop off Locations: {base_env.dropoffs}')
+            
             if episode % 25 == 0:
                 print(f'Episodes #{episode}')
             
@@ -74,12 +119,9 @@ def main():
 
             # Start episode loop
             while not all(done_flags.values()):
-                # if any(done_flags.values()):
-                    # print(done_flags)
                 actions = {}
                 log_probs = {}
 
-                episode_reward_single = 0
                 # Determine actions and log_probs for each agent in this step sequence
                 # Call actor class to step based on actions selected with log_prob
                 for agent in base_env.agents:
@@ -114,35 +156,32 @@ def main():
         
                     rollouts.append({
                         'state': state,
-                        # 'action': actions[agent],
                         'action': action_roll,
-                        # 'log_prob': log_probs[agent],
                         'log_prob': log_prob_roll,
                         'reward': rewards[agent],
                         'termination': terminations[agent],
-                        # 'next_state': next_obs[agent],
                         'next_state': next_state,
                         'next_value': next_value,
-                        # 'next_value': mappo_agent.critic(next_obs[agent]),
                     })
-                    episode_rewards[agent] += rewards[agent]  
+                    # episode_rewards[agent] += rewards[agent]  
 
                 obs = next_obs
                 done_flags.update(terminations)
-                # terminations = any(terminations.values())  # Episode ends if any agent is done
 
-                # Update the model at specified intervals
+                # Update the model at specified intervals (full batch size)
                 if len(rollouts) >= batch_size:
-                    # Update model using rollouts after we reach a full batch size
                     mappo_agent.update_mappo(rollouts, next_obs) 
                     rollouts = []
+            
+            for agent in base_env.agents:
+                episode_rewards[agent] += rewards[agent]
 
             print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
             # print(terminations)
-            cumulative_rewards.append(sum(episode_rewards.values()))
+            cumulative_rewards.append((episode_rewards.values()))
             per_agent_rewards_all.append(episode_rewards.copy())
 
 
-    plot_rewards(cumulative_rewards, num_episodes)
+    plot_rewards(cumulative_rewards, num_episodes, len(seeds))
 
 main()

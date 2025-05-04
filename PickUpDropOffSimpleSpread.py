@@ -128,9 +128,9 @@ class PickUpDropOffSimpleSpread:
         
         # add rewards from pettingzoo step func 
         # clip rewards so they don't impact learning too much
-        # for agent, reward in rewards.items():
-        #     if not self.agent_termination_flags[agent]:
-        #         self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
+        for agent, reward in rewards.items():
+            if not self.agent_termination_flags[agent]:
+                self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
         for agent in self.agents:
