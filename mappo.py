@@ -18,22 +18,34 @@ class MAPPO:
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
 
+    # def compute_advantages(self, rewards, values, next_values, dones):
+    #     # compare how well an action is compared to average action using generalize advantage estimation (GAE)
+    #     # reduce variance of policy gradient estimates
+    #     advantages = torch.zeros_like(rewards)
+    #     last_advantage = 0
+
+    #     for t in reversed(range(len(rewards))):
+    #         if dones[t]:
+    #             delta = rewards[t] - values[t]
+    #         else:
+    #             # compute TD error
+    #             delta = rewards[t] + self.gamma * next_values[t] - values[t]
+    #         last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
+    #         advantages[t] = last_advantage
+    #     return advantages
+    
     def compute_advantages(self, rewards, values, next_values, dones):
-        # compare how well an action is compared to average action using generalize advantage estimation (GAE)
-        # reduce variance of policy gradient estimates
         advantages = torch.zeros_like(rewards)
         last_advantage = 0
 
         for t in reversed(range(len(rewards))):
-            if dones[t]:
-                delta = rewards[t] - values[t]
-            else:
-                # compute TD error
-                delta = rewards[t] + self.gamma * next_values[t] - values[t]
-            last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
-            advantages[t] = last_advantage
-        return advantages
-    
+            mask = 1.0 - dones[t]  # 0 if done, 1 otherwise
+            delta = rewards[t] + self.gamma * next_values[t] * mask - values[t]
+            advantages[t] = last_advantage = delta + self.gamma * self.gae_lambda * mask * last_advantage
+
+        returns = advantages + values
+        return advantages, returns
+        
     #  [env step] ➔ [save rollout] ➔ [finish batch] ➔
     #     ➔ [compute advantage] ➔ [compute losses] ➔ [backprop] ➔ [update networks]
     def update_mappo(self, rollouts, next_obs):
@@ -61,7 +73,7 @@ class MAPPO:
             [torch.tensor(r['log_prob'], dtype=torch.float32) for r in rollouts]
         )
         # returns = torch.stack([r['return'] for r in rollouts])
-        returns = torch.stack(
+        rewards = torch.stack(
             [torch.tensor(r['reward'], dtype=torch.float32) for r in rollouts]
         )
         next_states = torch.stack([torch.tensor(r['next_state'], dtype=torch.float32) for r in rollouts])
@@ -75,10 +87,10 @@ class MAPPO:
 
         # Get values (both current and next) from the critic
         values = self.critic(states)
-
-        next_values = torch.tensor([r['next_value'] for r in rollouts], dtype=torch.float32)
+        next_values = self.critic(next_states)
+        # next_values = torch.tensor([r['next_value'] for r in rollouts], dtype=torch.float32)
         # compute bootstrapped returns/advantages
-        # next_values = self.critic(next_states)
+        # next_values = self.critic(next_states)   
         # next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
         # print("Mean value:", values.mean().item())
@@ -86,17 +98,18 @@ class MAPPO:
         # if values != next_values:
             # print('vals change')
 
-        advantages = self.compute_advantages(returns, values, next_values, terminations)
+        advantages, returns = self.compute_advantages(rewards, values, next_values, terminations)
         # advantages = torch.stack(
         #     [torch.tensor(r['advantage'], dtype=torch.float32) for r in rollouts]
         # )
 
+        # Normalize advantages
+        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         # Get new log probs and values
         new_log_probs = self.actor.evaluate_actions(states, actions)
-        new_values = self.critic(states)
+        # new_values = self.critic(states)
 
-        # average uncertainty over all possible actions with entropy, higher entropy values indicate more explorationx
-        entropy = self.actor.get_entropy(states)
+
 
         # Determine ratio of new and old log probs, used in PPO
         ratio = torch.exp(new_log_probs - old_log_probs)
@@ -107,15 +120,24 @@ class MAPPO:
         # policies which allows learning to stabalize
         policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 
-        # Compute the value loss (c_v)
-        value_loss = self.value_loss_coef * (returns - new_values).pow(2).mean()
 
+        value_loss = torch.nn.functional.mse_loss(values, returns)
+        # Compute the value loss (c_v)
+        # value_loss = self.value_loss_coef * (returns - next_values).pow(2).mean()
+        
+        # average uncertainty over all possible actions with entropy, higher entropy values indicate more explorationx
+        entropy = self.actor.get_entropy(states)
+        
         # Compute the entropy loss, to maximize entropy, we subtract it from the total loss (loss var here)
-        entropy_loss = -self.entropy_coef * entropy.mean()
+        # entropy_loss = -self.entropy_coef * entropy.mean()
 
         # Total loss, entropy regularization
         # L_total = L_Policy + c_v * L_value_loss * policy entropy
-        loss = policy_loss + value_loss + entropy_loss
+        # loss = policy_loss + value_loss + entropy_loss
+
+
+        # Total loss
+        loss = policy_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy
 
         # Backpropagation
         self.optimizer.zero_grad()
