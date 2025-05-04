@@ -13,72 +13,53 @@ def flatten_obs(obs_dict):
         parts.append(np.asarray(v).flatten())
     return np.concatenate(parts)
 
-def plot_rewards(cumulative_rewards, num_episodes, num_seeds):
-    # all_rewards = np.array([
-    #     [episode_rewards[ep] for ep in sorted(episode_rewards)]
-    #     for episode_rewards in cumulative_rewards
-    # ])
+def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
+    all_ep_means = []
+    for seed, episode_rewards in cumulative_rewards.items():
+        # Convert each dict_values object to a list of floats and compute per-episode mean
+        means = [np.mean(list(ep)) for ep in episode_rewards]
+        all_ep_means.append(means)
 
+    # Pad shorter lists with NaN if needed (in case seeds have different episode counts)
+    max_len = max(len(m) for m in all_ep_means)
+    for i in range(len(all_ep_means)):
+        if len(all_ep_means[i]) < max_len:
+            all_ep_means[i] = np.pad(all_ep_means[i], (0, max_len - len(all_ep_means[i])), constant_values=np.nan)
 
-    all_rewards = np.array([
-        list(episode) for episode in cumulative_rewards
-    ])
+    all_rewards = np.array(all_ep_means)  # shape: (seeds, episodes)
+    mean_rewards = np.mean(all_rewards, axis=0)
+    std_rewards = np.std(all_rewards, axis=0)
 
-    print(type(cumulative_rewards))
-    print(len(cumulative_rewards))  # should be num_seeds
-    print(type(cumulative_rewards[0]))
-    print(len(cumulative_rewards[0]))  # should be num_episodes
-
-    # rewards_across_seeds = [num_seeds, num_episodes]
-    mean_rewards = all_rewards.mean(axis=0)
-    std_rewards = all_rewards.std(axis=0)
-    # std_rewards = np.std(all_rewards)
-
-
+    # Plot
     plt.figure(figsize=(6, 4))
-    plt.errorbar(range(len(mean_rewards)), mean_rewards, yerr=std_rewards, label='Mean ± Std Dev', fmt='-o', capsize=3)
+    plt.errorbar(
+        x=range(1, len(mean_rewards) + 1),
+        y=mean_rewards,
+        yerr=std_rewards,
+        fmt='-o',
+        capsize=3,
+        label='Mean ± Std Dev'
+    )
     plt.xlabel('Episode')
-    plt.ylabel('Cumulative Reward')
-    plt.title('Learning Curve with Standard Deviation')
-    plt.legend()
+    plt.ylabel('Mean Cumulative Reward (per episode)')
+    plt.title('Learning Curve Averaged Over Agents and Seeds')
     plt.grid(True)
+    plt.legend()
     plt.tight_layout()
-    plt.savefig("learning_curve_with_std.png")
-    # plt.plot(mean_rewards, label='Mean Reward')
-    # plt.fill_between(np.arange(num_episodes), mean_rewards - std_rewards, mean_rewards + std_rewards, alpha=0.2, label='Standard Deviation')
-    # plt.xlabel('Episode')
-    # plt.ylabel('Cumulative Reward')
-    # plt.title('Learning Curve Across Seeds (3 Seeds, 3 Actors)')
-    # plt.legend()
-    # # plt.savefig('Mean and Std Dev Rewards Diff Seeds.png') 
-    # plt.close()  
-
-    # Plotting mean and std deviation
-    # plt.figure(figsize=(8, 6))
-    # plt.plot(mean_rewards, label='Mean Reward')
-    # plt.fill_between(range(num_episodes),
-    #                 mean_rewards - std_rewards,
-    #                 mean_rewards + std_rewards,
-    #                 alpha=0.3, label='±1 Std Dev')
-    # plt.xlabel('Episode')
-    # plt.ylabel('Cumulative Reward')
-    # plt.title('MAPPO Training Performance Across 5 Seeds')
-    # plt.legend()
-    # plt.grid(True)
-    plt.savefig('mappo_performance_across_seeds.png')
-    plt.close()
+    plt.savefig("learning_curve_with_std_3.png")
 
 def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
     # seeds = [42, 162, 120, 14, 45]
-    seeds = [163]
-    num_episodes = 5
+    seeds = [163, 11]
+    num_episodes =  30
     batch_size = 32
     cumulative_rewards = []
+    cumulative_rewards = {}
     per_agent_rewards_all = []
     for s in seeds:
-
+        cumulative_rewards[s] = []
         # seeds = [42, 162, 120, 14, 45]
 
         # Initialize the environment (GoalBasedSimpleSpread)
@@ -178,10 +159,11 @@ def main():
 
             print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
             # print(terminations)
-            cumulative_rewards.append((episode_rewards.values()))
-            per_agent_rewards_all.append(episode_rewards.copy())
+            cumulative_rewards[s].append(episode_rewards.values())
+            # cumulative_rewards.append((episode_rewards.values()))
+            # per_agent_rewards_all.append(episode_rewards.copy())
 
 
-    plot_rewards(cumulative_rewards, num_episodes, len(seeds))
+    plot_rewards(cumulative_rewards, num_episodes, len(seeds), len(base_env.agents))
 
 main()
