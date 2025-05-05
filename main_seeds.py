@@ -30,7 +30,6 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     mean_rewards = np.mean(all_rewards, axis=0)
     std_rewards = np.std(all_rewards, axis=0)
 
-    # Plot
     plt.figure(figsize=(6, 4))
     plt.errorbar(
         x=range(1, len(mean_rewards) + 1),
@@ -42,18 +41,18 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     )
     plt.xlabel('Episode')
     plt.ylabel('Mean Cumulative Reward (per episode)')
-    plt.title('Learning Curve Averaged Over Agents and Seeds')
+    plt.title('Learning Curve Averaged Over Agents and Seeds - 3 Agents, 2 Tasks')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("learning_curve_with_std_3.png")
+    plt.savefig("learning_curve_with_std_3_2.png")
 
 def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
     # seeds = [42, 162, 120, 14, 45]
-    seeds = [163, 11]
-    num_episodes =  30
+    seeds = [163, 11, 22]
+    num_episodes =  50
     batch_size = 32
     cumulative_rewards = []
     cumulative_rewards = {}
@@ -63,7 +62,7 @@ def main():
         # seeds = [42, 162, 120, 14, 45]
 
         # Initialize the environment (GoalBasedSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=20, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
@@ -83,18 +82,13 @@ def main():
         # After 32 rollouts have been generated, call update() to improve policy
         for episode in range(num_episodes):
             obs = base_env.reset()  # Reset the environment and get initial observations
-            done = False
             episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
             rollouts = []  # Store rollouts for updating the model
             
             print(f'Starting Positions')
-            for i in range(len(base_env.fixed_positions)):
-                print(f'Agent {i} X: {base_env.fixed_positions[i][0]} Y: {base_env.fixed_positions[i][1]}')
+            for i in range(len(base_env.starting_positions)):
+                print(f'Agent {i} X: {base_env.starting_positions[i][0]} Y: {base_env.starting_positions[i][1]}')
             print(f'Pickup locations: {base_env.pickups}')
-            print(f'Drop off Locations: {base_env.dropoffs}')
-            
-            if episode % 25 == 0:
-                print(f'Episodes #{episode}')
             
             done_flags = {agent: False for agent in base_env.agents}
 
@@ -118,6 +112,8 @@ def main():
 
                 # Store experiences in the rollouts buffer
                 for agent in base_env.agents:
+                    term = terminations.get(agent, False) or truncs.get(agent, False)
+                    reward = rewards.get(agent, 0.0)
                     if terminations[agent]:
                         continue
 
@@ -126,7 +122,7 @@ def main():
                         state = obs[agent]
                         next_state = next_obs[agent]
                         next_state_tensor = torch.tensor(next_state, dtype=torch.float32).unsqueeze(0)
-                        next_value = mappo_agent.critic(next_state_tensor).squeeze()
+                        next_value = mappo_agent.critic(next_state_tensor).item()
                     else:
                         state = np.zeros(obs_dim)
                         next_state = np.zeros(obs_dim, dtype=np.float32) # zeros with same shape
@@ -137,10 +133,11 @@ def main():
         
                     rollouts.append({
                         'state': state,
-                        'action': action_roll,
+                        'action': actions[agent],
+                        # 'action': action_roll,
                         'log_prob': log_prob_roll,
-                        'reward': rewards[agent],
-                        'termination': terminations[agent],
+                        'reward': reward,
+                        'termination': term,
                         'next_state': next_state,
                         'next_value': next_value,
                     })

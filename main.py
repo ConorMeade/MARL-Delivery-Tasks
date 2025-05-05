@@ -17,22 +17,22 @@ def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
     plt.plot(cumulative_rewards)
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
-    plt.title('Cumulative Episode Rewards')
-    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_tasks_all_locations.png')
+    plt.title(f'Cumulative Episode Rewards - {num_agents} Agents, {num_tasks} Tasks')
+    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}.png')
     plt.close()
 
-    agent_names = list(per_agent_rewards[0].keys())
+    # agent_names = list(per_agent_rewards[0].keys())
 
-    for agent in agent_names:
-        agent_rewards = [episode_rewards[agent] for episode_rewards in per_agent_rewards]
-        plt.plot(agent_rewards, label=agent)
+    # for agent in agent_names:
+    #     agent_rewards = [episode_rewards[agent] for episode_rewards in per_agent_rewards]
+    #     plt.plot(agent_rewards, label=agent)
 
-    plt.xlabel('Episode')
-    plt.ylabel('Reward')
-    plt.title('Per-Agent Cumulative Rewards')
-    plt.legend()
-    plt.savefig(f'learning_curves/per_agent_rewards_seed42_{num_agents}_agents_{num_tasks}_tasks_all_locations.png') 
-    plt.close()  
+    # plt.xlabel('Episode')
+    # plt.ylabel('Reward')
+    # plt.title('Per-Agent Cumulative Rewards')
+    # plt.legend()
+    # plt.savefig(f'learning_curves/per_agent_rewards_seed42_{num_agents}_agents_{num_tasks}_tasks_all_locations.png') 
+    # plt.close()  
 
 def main():
     cumulative_rewards = []
@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=65, num_agents=2, num_tasks=3)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=2, num_tasks=4)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -60,7 +60,6 @@ def main():
     # After 32 rollouts have been generated, call update() to improve policy
     for episode in range(num_episodes):
         obs = base_env.reset()  # Reset the environment and get initial observations
-        done = False
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
         rollouts = []  # Store rollouts for updating the model
         
@@ -68,9 +67,9 @@ def main():
         for i in range(len(base_env.starting_positions)):
             print(f'Agent {i} X: {base_env.starting_positions[i][0]} Y: {base_env.starting_positions[i][1]}')
         print(f'Pickup locations: {base_env.pickups}')
-        print(f'Drop off Locations: {base_env.dropoffs}')
-        if episode % 25 == 0:
-            print(f'Episode #{episode}')
+        # print(f'Drop off Locations: {base_env.dropoffs}')
+        # if episode % 25 == 0:
+            # print(f'Episode #{episode}')
         
         done_flags = {agent: False for agent in base_env.agents}
 

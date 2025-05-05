@@ -19,8 +19,7 @@ class MAPPO:
         self.entropy_coef = entropy_coef
 
     # def compute_advantages(self, rewards, values, next_values, dones):
-    #     # compare how well an action is compared to average action using generalize advantage estimation (GAE)
-    #     # reduce variance of policy gradient estimates
+
     #     advantages = torch.zeros_like(rewards)
     #     last_advantage = 0
 
@@ -35,6 +34,9 @@ class MAPPO:
     #     return advantages
     
     def compute_advantages(self, rewards, values, next_values, dones):
+        # compare how well an action is compared to average action using generalize advantage estimation (GAE)
+        # Policy can learn which actions are better than others
+        # educe variance of policy gradient estimates
         advantages = torch.zeros_like(rewards)
         last_advantage = 0
 
@@ -124,7 +126,7 @@ class MAPPO:
         value_loss = torch.nn.functional.mse_loss(values, returns)
         # value_loss = self.value_loss_coef * (returns - next_values).pow(2).mean()
         
-        # average uncertainty over all possible actions with entropy, higher entropy values indicate more explorationx
+        # average uncertainty over all possible actions with entropy, higher entropy values indicate more exploration
         entropy = self.actor.get_entropy(states)
         
         # Compute the entropy loss, to maximize entropy, we subtract it from the total loss (loss var here)

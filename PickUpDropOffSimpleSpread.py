@@ -180,36 +180,6 @@ class PickUpDropOffSimpleSpread:
                             goal['pickup_reward'] = True
                             self.agent_termination_flags[agent] = True
 
-                    # self.agent_infos_out['reached_pickup'] = True
-                # else:
-                #     self.agent_infos_out[agent]['color'] = 'red'
-            # elif not goal['reached_dropoff'] and not goal['dropoff_reward']:
-            #     if np.linalg.norm(pos - goal['dropoff']) < 0.2:
-            #         print(f'{agent} reached goal 2')
-            #         goal['reached_dropoff'] = True
-            #         goal['dropoff_reward'] = True
-            #         self.agent_infos_out[agent]['color'] = 'green'
-            #         self.agent_goals[agent]['goals_completed'] += 1
-            #         self.agent_termination_flags[agent] = True
-            #         # Do a per task reset
-            #         # So, if more tasks need to be completed, make it so we can
-            #         # still enter these if statements again
-            #         if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
-            #             self.agent_rewards_out[agent] += 2
-            #             goal['reached_pickup'] = False
-            #             goal['reached_dropoff'] = False
-            #             goal['pickup_reward'] = False
-            #             goal['dropoff_reward'] = False
-            #             self.agent_termination_flags[agent] = False
-            #         if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
-            #             self.agent_rewards_out[agent] += 2
-                    # if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
-
-                # else:
-                #     self.agent_infos_out[agent]['color'] = 'orange'
-            # else:
-            #     self.agent_infos_out[agent]['color'] = 'green'
-
         if self.step_count >= self.max_cycles:
             terminations = {agent: True for agent in self.agents}
             return obs_flat, dict(self.agent_rewards_out), terminations, dict(self.agent_truncs_out), dict(self.agent_infos_out)
