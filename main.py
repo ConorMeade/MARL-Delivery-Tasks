@@ -18,7 +18,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title('Cumulative Episode Rewards')
-    plt.savefig('cumulative_rewards_UPDATED.png')
+    plt.savefig('cumulative_rewards_3_agents_5_tasks(2).png')
     plt.close()
 
     agent_names = list(per_agent_rewards[0].keys())
@@ -31,7 +31,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.ylabel('Reward')
     plt.title('Per-Agent Cumulative Rewards')
     plt.legend()
-    plt.savefig('per_agent_rewards_seed42_UPDATED.png') 
+    plt.savefig('per_agent_rewards_seed42_3_agents_5_tasks(2).png') 
     plt.close()  
 
 def main():
@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=45, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=65, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -52,8 +52,8 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 45
-    batch_size = 128
+    num_episodes = 50
+    batch_size = 32
     
     # Training loop
     # Reset env, generate rollouts
@@ -65,8 +65,8 @@ def main():
         rollouts = []  # Store rollouts for updating the model
         
         print(f'Starting Positions')
-        for i in range(len(base_env.fixed_positions)):
-            print(f'Agent {i} X: {base_env.fixed_positions[i][0]} Y: {base_env.fixed_positions[i][1]}')
+        for i in range(len(base_env.starting_positions)):
+            print(f'Agent {i} X: {base_env.starting_positions[i][0]} Y: {base_env.starting_positions[i][1]}')
         print(f'Pickup locations: {base_env.pickups}')
         print(f'Drop off Locations: {base_env.dropoffs}')
         if episode % 25 == 0:

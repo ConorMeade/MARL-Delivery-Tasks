@@ -84,6 +84,7 @@ class MAPPO:
         # advantages = torch.stack([r['advantage'] for r in rollouts])
         terminations = torch.stack([torch.tensor(r['termination'], dtype=torch.float32) for r in rollouts])
 
+        n_vals = torch.stack([torch.tensor(r['next_value'], dtype=torch.float32) for r in rollouts])
 
         # Get values (both current and next) from the critic
         values = self.critic(states)
@@ -104,12 +105,11 @@ class MAPPO:
         # )
 
         # Normalize advantages
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
         # Get new log probs and values
+        # new_log_probs = self.actor.evaluate_actions(next_states, actions)
         new_log_probs = self.actor.evaluate_actions(states, actions)
         # new_values = self.critic(states)
-
-
 
         # Determine ratio of new and old log probs, used in PPO
         ratio = torch.exp(new_log_probs - old_log_probs)
@@ -120,27 +120,25 @@ class MAPPO:
         # policies which allows learning to stabalize
         policy_loss = torch.min(ratio * advantages, torch.clamp(ratio, 1 - self.clip_epsilon, 1 + self.clip_epsilon) * advantages).mean()
 
-
+        # Compute the value loss, mse (c_v)
         value_loss = torch.nn.functional.mse_loss(values, returns)
-        # Compute the value loss (c_v)
         # value_loss = self.value_loss_coef * (returns - next_values).pow(2).mean()
         
         # average uncertainty over all possible actions with entropy, higher entropy values indicate more explorationx
         entropy = self.actor.get_entropy(states)
         
         # Compute the entropy loss, to maximize entropy, we subtract it from the total loss (loss var here)
-        # entropy_loss = -self.entropy_coef * entropy.mean()
+        entropy_loss = -self.entropy_coef * entropy.mean()
 
         # Total loss, entropy regularization
         # L_total = L_Policy + c_v * L_value_loss * policy entropy
-        # loss = policy_loss + value_loss + entropy_loss
-
+        l_loss = policy_loss + value_loss + entropy_loss
 
         # Total loss
-        loss = policy_loss + self.value_loss_coef * value_loss - self.entropy_coef * entropy
+        # loss = policy_loss + self.value_loss_coef * value_loss - (self.entropy_coef * entropy)
 
         # Backpropagation
         self.optimizer.zero_grad()
-        loss.backward()
+        l_loss.backward()
         self.optimizer.step()
 
