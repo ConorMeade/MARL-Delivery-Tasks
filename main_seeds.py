@@ -30,7 +30,7 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     mean_rewards = np.mean(all_rewards, axis=0)
     std_rewards = np.std(all_rewards, axis=0)
 
-    plt.figure(figsize=(6, 4))
+    plt.figure(figsize=(8, 5))
     plt.errorbar(
         x=range(1, len(mean_rewards) + 1),
         y=mean_rewards,
@@ -41,7 +41,7 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     )
     plt.xlabel('Episode')
     plt.ylabel('Mean Cumulative Reward (per episode)')
-    plt.title('Learning Curve Averaged Over Agents and Seeds - 3 Agents, 2 Tasks')
+    plt.title('Mean and Std Dev Across Seeds - 3 Agents, 2 Tasks')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()

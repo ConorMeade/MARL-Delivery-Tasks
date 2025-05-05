@@ -14,10 +14,11 @@ def flatten_obs(obs_dict):
     return np.concatenate(parts)
 
 def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
+    plt.figure(figsize=(8, 5))
     plt.plot(cumulative_rewards)
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
-    plt.title(f'Cumulative Episode Rewards - {num_agents} Agents, {num_tasks} Tasks')
+    plt.title(f'Cumulative Ep Rewards - {num_agents} Agents, {num_tasks} Tasks')
     plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}.png')
     plt.close()
 
