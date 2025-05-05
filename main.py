@@ -13,12 +13,12 @@ def flatten_obs(obs_dict):
         parts.append(np.asarray(v).flatten())
     return np.concatenate(parts)
 
-def plot_rewards(cumulative_rewards, per_agent_rewards):
+def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
     plt.plot(cumulative_rewards)
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title('Cumulative Episode Rewards')
-    plt.savefig('cumulative_rewards_3_agents_5_tasks(2).png')
+    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_tasks_all_locations.png')
     plt.close()
 
     agent_names = list(per_agent_rewards[0].keys())
@@ -31,7 +31,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards):
     plt.ylabel('Reward')
     plt.title('Per-Agent Cumulative Rewards')
     plt.legend()
-    plt.savefig('per_agent_rewards_seed42_3_agents_5_tasks(2).png') 
+    plt.savefig(f'learning_curves/per_agent_rewards_seed42_{num_agents}_agents_{num_tasks}_tasks_all_locations.png') 
     plt.close()  
 
 def main():
@@ -40,7 +40,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=65, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=65, num_agents=2, num_tasks=3)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -149,6 +149,6 @@ def main():
         per_agent_rewards_all.append(episode_rewards.copy())
 
 
-    plot_rewards(cumulative_rewards, per_agent_rewards_all)
+    plot_rewards(cumulative_rewards, per_agent_rewards_all, num_agents=base_env.num_agents, num_tasks=base_env.num_tasks)
 
 main()
