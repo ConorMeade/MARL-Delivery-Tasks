@@ -128,6 +128,7 @@ def main():
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
+                print('updating policy')
                 # Update model using rollouts after we reach a full batch size
                 mappo_agent.update_mappo(rollouts, next_obs) 
                 rollouts = []

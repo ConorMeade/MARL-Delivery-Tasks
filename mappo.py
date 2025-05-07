@@ -25,10 +25,11 @@ class MAPPO:
         advantages = torch.zeros_like(rewards)
         last_advantage = 0
 
+        # calculate gae backwards from time step t
         for t in reversed(range(len(rewards))):
-            mask = 1.0 - dones[t]  # 0 if done, 1 otherwise
-            delta = rewards[t] + self.gamma * next_values[t] * mask - values[t]
-            advantages[t] = last_advantage = delta + self.gamma * self.gae_lambda * mask * last_advantage
+            mask = 1.0 - dones[t]  # if 0 then agent is done, 1 if not done
+            td_delta = rewards[t] + self.gamma * next_values[t] * mask - values[t] # TD error
+            advantages[t] = last_advantage = td_delta + self.gamma * self.gae_lambda * mask * last_advantage
 
         returns = advantages + values
         return advantages, returns

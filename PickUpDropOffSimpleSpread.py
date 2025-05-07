@@ -126,8 +126,8 @@ class PickUpDropOffSimpleSpread:
         # clip rewards so they don't impact learning too much
         for agent, reward in rewards.items():
             if not self.agent_termination_flags[agent]:
-                # self.agent_rewards_out += reward
-                self.agent_rewards_out[agent] += np.clip(reward, -0.5, 0.5)
+                self.agent_rewards_out[agent] += reward
+                # self.agent_rewards_out[agent] += np.clip(reward, -0.5, 0.5)
                 # self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
@@ -168,13 +168,13 @@ class PickUpDropOffSimpleSpread:
 
                         self.agent_goals[agent]['goals_completed'] += 1
                         if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
-                            self.agent_rewards_out[agent] += 50
+                            self.agent_rewards_out[agent] += 100
                             goal['reached_pickup'] = False
                             goal['pickup_reward'] = False
                             self.agent_termination_flags[agent] = False
 
                         if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
-                            self.agent_rewards_out[agent] += 50
+                            self.agent_rewards_out[agent] += 100
                             goal['reached_pickup'] = True
                             goal['pickup_reward'] = True
                             self.agent_termination_flags[agent] = True
