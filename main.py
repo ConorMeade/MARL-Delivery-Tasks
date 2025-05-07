@@ -19,7 +19,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title(f'Cumulative Ep Rewards - {num_agents} Agents, {num_tasks} Tasks')
-    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_point5.png')
+    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_35episodes.png')
     plt.close()
 
     # agent_names = list(per_agent_rewards[0].keys())
@@ -41,7 +41,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (PickUpDropOffSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=3, num_tasks=3)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=2, num_tasks=7)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
@@ -51,7 +51,7 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 50
+    num_episodes = 35
     batch_size = 16
     
     # Training loop
@@ -123,18 +123,22 @@ def main():
                     'next_value': next_value,
                 })
 
+            for agent in base_env.agents:
+                episode_rewards[agent] += rewards[agent]  
+            
+
             obs = next_obs
             done_flags.update(terminations)
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:
-                print('updating policy')
+                # print('updating policy')
                 # Update model using rollouts after we reach a full batch size
                 mappo_agent.update_mappo(rollouts, next_obs) 
                 rollouts = []
 
-        for agent in base_env.agents:
-            episode_rewards[agent] += rewards[agent]  
+        # for agent in base_env.agents:
+        #     episode_rewards[agent] += rewards[agent]  
 
         print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
         # print(terminations)
