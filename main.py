@@ -19,7 +19,7 @@ def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
     plt.title(f'Cumulative Ep Rewards - {num_agents} Agents, {num_tasks} Tasks')
-    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}.png')
+    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_point5.png')
     plt.close()
 
     # agent_names = list(per_agent_rewards[0].keys())
@@ -41,7 +41,7 @@ def main():
     seeds = [42, 162, 120, 14, 45]
 
     # Initialize the environment (GoalBasedSimpleSpread)
-    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=2, num_tasks=4)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+    base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=3, num_tasks=3)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n

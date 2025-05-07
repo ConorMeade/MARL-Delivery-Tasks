@@ -45,13 +45,13 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("learning_curve_with_std_3_2.png")
+    plt.savefig("learning_curve_with_std_3_2_point25.png")
 
 def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
-    # seeds = [42, 162, 120, 14, 45]
-    seeds = [163, 11, 22]
+    seeds = [42, 162, 120, 14, 45]
+    # seeds = [163, 11, 22]
     num_episodes =  50
     batch_size = 32
     cumulative_rewards = []

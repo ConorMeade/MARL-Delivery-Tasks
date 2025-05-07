@@ -10,7 +10,7 @@ class PickUpDropOffSimpleSpread:
         self.env = simple_spread_v3.parallel_env(
             render_mode="human",
             N=num_agents,
-            local_ratio=0.5,
+            local_ratio=0.25,
             max_cycles=max_cycles
         )
         self.seed = seed
@@ -129,7 +129,8 @@ class PickUpDropOffSimpleSpread:
         # clip rewards so they don't impact learning too much
         for agent, reward in rewards.items():
             if not self.agent_termination_flags[agent]:
-                self.agent_rewards_out[agent] += np.clip(reward, -0.5, 0.5)
+                # self.agent_rewards_out += reward
+                self.agent_rewards_out[agent] += np.clip(reward, -0.4, 0.4)
                 # self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
