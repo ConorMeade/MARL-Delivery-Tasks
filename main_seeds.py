@@ -41,27 +41,28 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     )
     plt.xlabel('Episode')
     plt.ylabel('Mean Cumulative Reward (per episode)')
-    plt.title('Mean and Std Dev Across Seeds - 3 Agents, 2 Tasks')
+    plt.title('Mean and Std Dev Across Seeds - 5 Agents, 3 Tasks')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("learning_curve_with_std_3_2_point25.png")
+    plt.savefig("new_learning/learning_curve_with_std_5_3.png")
 
 def main():
 
     # per_agent_rewards_all = []  # Store per-agent rewards per episode
     seeds = [42, 162, 120, 14, 45]
     # seeds = [163, 11, 22]
-    num_episodes =  50
+    num_episodes =  40
     batch_size = 16
     cumulative_rewards = []
     cumulative_rewards = {}
     per_agent_rewards_all = []
     for s in seeds:
+        print(s)
         cumulative_rewards[s] = []
 
         # Initialize the environment (PickUpDropOffSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=2)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=5, num_tasks=3)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
@@ -76,9 +77,9 @@ def main():
         # After 16 rollouts have been generated, call update() to improve policy
         for episode in range(num_episodes):
             obs = base_env.reset()  # Reset the environment and get initial observations
-            episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
-            rollouts = []  # Store rollouts for updating the model
-            
+            episode_rewards = {agent: 0 for agent in base_env.agents} 
+            rollouts = []  # Rollouts for mappo policy update
+
             print(f'Starting Positions')
             for i in range(len(base_env.starting_positions)):
                 print(f'Agent {i} X: {base_env.starting_positions[i][0]} Y: {base_env.starting_positions[i][1]}')
@@ -136,6 +137,11 @@ def main():
                         'next_value': next_value,
                     }) 
 
+
+                
+                for agent in base_env.agents:
+                    episode_rewards[agent] += rewards[agent]
+
                 obs = next_obs
                 done_flags.update(terminations)
 
@@ -144,8 +150,6 @@ def main():
                     mappo_agent.update_mappo(rollouts, next_obs) 
                     rollouts = []
             
-            for agent in base_env.agents:
-                episode_rewards[agent] += rewards[agent]
 
             print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
             cumulative_rewards[s].append(episode_rewards.values())

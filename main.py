@@ -60,7 +60,7 @@ def main():
     for episode in range(num_episodes):
         obs = base_env.reset()  # Reset the environment and get initial observations
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
-        rollouts = []  # Store rollouts for updating the model
+        rollouts = []  # Rollouts for mappo policy update
         
         print(f'Starting Positions')
         for i in range(len(base_env.starting_positions)):
