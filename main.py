@@ -40,25 +40,23 @@ def main():
     per_agent_rewards_all = []
     seeds = [42, 162, 120, 14, 45]
 
-    # Initialize the environment (GoalBasedSimpleSpread)
+    # Initialize the environment (PickUpDropOffSimpleSpread)
     base_env = PickUpDropOffSimpleSpread(seed=42, max_cycles=30, num_agents=3, num_tasks=3)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
     agent = base_env.agents[0]  # Just pick one agent
     obs_dim = base_env.observation_spaces(agent).shape[0]
     act_dim = base_env.action_spaces(agent).n
 
-    # print(obs_dim)
-    # print(act_dim)
     actor = Actor(obs_dim=obs_dim, act_dim=act_dim)
     critic = Critic(obs_dim=obs_dim)
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
     num_episodes = 50
-    batch_size = 32
+    batch_size = 16
     
     # Training loop
     # Reset env, generate rollouts
-    # After 32 rollouts have been generated, call update() to improve policy
+    # After 16 rollouts have been generated, call update() to improve policy
     for episode in range(num_episodes):
         obs = base_env.reset()  # Reset the environment and get initial observations
         episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
@@ -68,10 +66,7 @@ def main():
         for i in range(len(base_env.starting_positions)):
             print(f'Agent {i} X: {base_env.starting_positions[i][0]} Y: {base_env.starting_positions[i][1]}')
         print(f'Pickup locations: {base_env.pickups}')
-        # print(f'Drop off Locations: {base_env.dropoffs}')
-        # if episode % 25 == 0:
-            # print(f'Episode #{episode}')
-        
+
         done_flags = {agent: False for agent in base_env.agents}
 
         rewards_per_agent = defaultdict(float)
@@ -82,7 +77,6 @@ def main():
             actions = {}
             log_probs = {}
 
-            episode_reward_single = 0
             # Determine actions and log_probs for each agent in this step sequence
             # Call actor class to step based on actions selected with log_prob
             for agent in base_env.agents:
@@ -103,8 +97,8 @@ def main():
                 rewards_per_agent[agent] += reward
                 if terminations[agent]:
                     continue
-                # next_state = next_obs[agent] if not done and agent in next_obs else np.zeros_like(obs[agent])
-                # if not terminations[agent]:
+
+                # generate rollout values, evaluate state with critic, if no agent due to termination, return zeros
                 if agent in next_obs:
                     state = obs[agent]
                     next_state = next_obs[agent]
@@ -128,11 +122,9 @@ def main():
                     'next_state': next_state,
                     'next_value': next_value,
                 })
-                # episode_rewards[agent] += rewards[agent]  
 
             obs = next_obs
             done_flags.update(terminations)
-            # terminations = any(terminations.values())  # Episode ends if any agent is done
 
             # Update the model at specified intervals
             if len(rollouts) >= batch_size:

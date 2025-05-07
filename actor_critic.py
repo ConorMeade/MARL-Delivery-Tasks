@@ -21,6 +21,13 @@ class Actor(nn.Module):
         self.final_action_layer = nn.Linear(64, self.act_dim)
 
     def forward(self, obs):
+        '''
+            Called when actor takes an action with ()
+
+            Use ReLU to get logits of hiddent layers
+            These logits are used in final action layer to 
+            get probabilities of the five possibe actions
+        '''
         obs = Functional.relu(self.fc1(obs))
         obs = Functional.relu(self.fc2(obs))
         logits = self.final_action_layer(obs)
@@ -39,10 +46,6 @@ class Actor(nn.Module):
         logits = self.forward(obs)
         probs = Functional.softmax(logits, dim=-1)
         dist = torch.distributions.Categorical(probs)
-        # if np.random.randn() < epsilon:
-            # action = np.random.randint(probs.shape[-1])
-            # log_prob = torch.log(probs.squeeze(0)[action] + 1e-10)
-        # else:
         action = dist.sample()
         # get logarithm of probability values
         log_prob = dist.log_prob(action)

@@ -20,7 +20,7 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
         means = [np.mean(list(ep)) for ep in episode_rewards]
         all_ep_means.append(means)
 
-    # Pad shorter lists with NaN if needed (in case seeds have different episode counts)
+    # handle NaNs, maintain same length with pad()
     max_len = max(len(m) for m in all_ep_means)
     for i in range(len(all_ep_means)):
         if len(all_ep_means[i]) < max_len:
@@ -53,33 +53,27 @@ def main():
     seeds = [42, 162, 120, 14, 45]
     # seeds = [163, 11, 22]
     num_episodes =  50
-    batch_size = 32
+    batch_size = 16
     cumulative_rewards = []
     cumulative_rewards = {}
     per_agent_rewards_all = []
     for s in seeds:
         cumulative_rewards[s] = []
-        # seeds = [42, 162, 120, 14, 45]
 
-        # Initialize the environment (GoalBasedSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=2)  # Pass the number of tasks here (1 pickup/dropoff pair per agent)
+        # Initialize the environment (PickUpDropOffSimpleSpread)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=2)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
 
-        # print(obs_dim)
-        # print(act_dim)
+        # init actor, critic, mappo policy
         actor = Actor(obs_dim=obs_dim, act_dim=act_dim)
         critic = Critic(obs_dim=obs_dim)
         mappo_agent = MAPPO(base_env, actor, critic)
-
-        # Training parameters
-        # num_episodes = 30
-        # batch_size = 32
         
         # Training loop
         # Reset env, generate rollouts
-        # After 32 rollouts have been generated, call update() to improve policy
+        # After 16 rollouts have been generated, call update() to improve policy
         for episode in range(num_episodes):
             obs = base_env.reset()  # Reset the environment and get initial observations
             episode_rewards = {agent: 0 for agent in base_env.agents}  # Initialize rewards
@@ -117,7 +111,7 @@ def main():
                     if terminations[agent]:
                         continue
 
-                    # if not terminations[agent]:
+                    # generate rollout values, evaluate next state with critic, if no agent due to termination, return zeros
                     if agent in next_obs:
                         state = obs[agent]
                         next_state = next_obs[agent]
@@ -140,8 +134,7 @@ def main():
                         'termination': term,
                         'next_state': next_state,
                         'next_value': next_value,
-                    })
-                    # episode_rewards[agent] += rewards[agent]  
+                    }) 
 
                 obs = next_obs
                 done_flags.update(terminations)
@@ -155,7 +148,6 @@ def main():
                 episode_rewards[agent] += rewards[agent]
 
             print(f"Episode {episode + 1}/{num_episodes}: Rewards = {episode_rewards}")
-            # print(terminations)
             cumulative_rewards[s].append(episode_rewards.values())
             # cumulative_rewards.append((episode_rewards.values()))
             # per_agent_rewards_all.append(episode_rewards.copy())

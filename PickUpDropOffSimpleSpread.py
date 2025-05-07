@@ -10,7 +10,7 @@ class PickUpDropOffSimpleSpread:
         self.env = simple_spread_v3.parallel_env(
             render_mode="human",
             N=num_agents,
-            local_ratio=0.25,
+            local_ratio=0.5,
             max_cycles=max_cycles
         )
         self.seed = seed
@@ -69,6 +69,8 @@ class PickUpDropOffSimpleSpread:
         self.agent_infos_out = {agent: {} for agent in self.agents}
         # self._setup_task_goals()
 
+
+        # on reset, set starting location to same location each episode
         if self.starting_positions is None:
             self.starting_positions = []
             for _ in self.env.unwrapped.world.agents:
@@ -104,10 +106,8 @@ class PickUpDropOffSimpleSpread:
 
     def step_pickup_drop(self, actions):
         self.step_count += 1
-        # Ensure all actions are int
-        # actions = {agent: int(action) for agent, action in actions.items()}
-        # actions = {agent: int(self.action_spaces(agent).sample()) for agent in self.agents}
 
+        # Ensure some action is made, default - stay in current location
         for agent in self.agents:
             if agent not in actions:
                 actions[agent] = 0
@@ -118,9 +118,6 @@ class PickUpDropOffSimpleSpread:
         # Step the environment with the given actions
         observation, rewards, termination, truncs, infos = self.env.step(actions)
 
-        # if rewards['agent_0'] != rewards['agent_1'] or rewards['agent_1'] != rewards['agent_2'] or rewards['agent_0'] != rewards['agent_2']:
-        #     print('rewards changed') 
-
         obs_flat = {}
         for agent, raw_obs in observation.items():
             obs_flat[agent] = self._flatten_if_needed(raw_obs)
@@ -130,13 +127,13 @@ class PickUpDropOffSimpleSpread:
         for agent, reward in rewards.items():
             if not self.agent_termination_flags[agent]:
                 # self.agent_rewards_out += reward
-                self.agent_rewards_out[agent] += np.clip(reward, -0.4, 0.4)
+                self.agent_rewards_out[agent] += np.clip(reward, -0.5, 0.5)
                 # self.agent_rewards_out[agent] += np.clip(reward, -0.01, 0.01)
 
         # Reward calculation and goal tracking
         for agent in self.agents:
             if agent not in observation:
-                continue  # skip agents no longer in the environment
+                continue  # skip agents no longer in the environment, agents that have term/trunc
             # REF
             # observation[agent] = [
             #     x_pos, y_pos,                # ← 0–1 : actual (global) position
@@ -148,6 +145,7 @@ class PickUpDropOffSimpleSpread:
             #     rel_agent2_x, rel_agent2_y,         # ← 12–13 : relative to other agent 2
             #     (maybe padding or comms)     # ← 14–17
             # ]
+            # only take first two elems for position
             pos = observation[agent][:2]
             goal = self.agent_goals[agent]
 
@@ -158,7 +156,7 @@ class PickUpDropOffSimpleSpread:
                 for g_idx in range(len(goal['pickup'])):
                     # goal_index = goal['pickup'].index(g)
                     cur_goal_state = goal['pickup'][g_idx]
-                    if np.linalg.norm(pos - cur_goal_state) < 0.2 and not self.is_visited(cur_goal_state, self.agent_goals[agent]['pickups_visited']):
+                    if np.linalg.norm(pos - cur_goal_state) < 0.15 and not self.is_visited(cur_goal_state, self.agent_goals[agent]['pickups_visited']):
                         print(f'{agent} Reached Pickup Location #{g_idx}')
                         goal['reached_pickup'] = True
                         goal['pickup_reward'] = True

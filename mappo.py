@@ -17,21 +17,6 @@ class MAPPO:
         self.clip_epsilon = clip_epsilon
         self.value_loss_coef = value_loss_coef
         self.entropy_coef = entropy_coef
-
-    # def compute_advantages(self, rewards, values, next_values, dones):
-
-    #     advantages = torch.zeros_like(rewards)
-    #     last_advantage = 0
-
-    #     for t in reversed(range(len(rewards))):
-    #         if dones[t]:
-    #             delta = rewards[t] - values[t]
-    #         else:
-    #             # compute TD error
-    #             delta = rewards[t] + self.gamma * next_values[t] - values[t]
-    #         last_advantage = delta + self.gamma * self.gae_lambda * last_advantage
-    #         advantages[t] = last_advantage
-    #     return advantages
     
     def compute_advantages(self, rewards, values, next_values, dones):
         # compare how well an action is compared to average action using generalize advantage estimation (GAE)
@@ -96,15 +81,7 @@ class MAPPO:
         # next_values = self.critic(next_states)   
         # next_values = torch.roll(values, shifts=-1, dims=0)  # Using next value from the subsequent timestep
 
-        # print("Mean value:", values.mean().item())
-        # print("Mean next_value:", next_values.mean().item())
-        # if values != next_values:
-            # print('vals change')
-
         advantages, returns = self.compute_advantages(rewards, values, next_values, terminations)
-        # advantages = torch.stack(
-        #     [torch.tensor(r['advantage'], dtype=torch.float32) for r in rollouts]
-        # )
 
         # Normalize advantages
         # advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
