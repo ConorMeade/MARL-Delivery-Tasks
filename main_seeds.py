@@ -30,7 +30,7 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     mean_rewards = np.mean(all_rewards, axis=0)
     std_rewards = np.std(all_rewards, axis=0)
 
-    plt.figure(figsize=(8, 5))
+    # plt.figure(figsize=(8, 5))
     plt.errorbar(
         x=range(1, len(mean_rewards) + 1),
         y=mean_rewards,
@@ -41,11 +41,11 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     )
     plt.xlabel('Episode')
     plt.ylabel('Mean Cumulative Reward (per episode)')
-    plt.title('Mean and Std Dev Across Seeds - 5 Agents, 3 Tasks')
+    plt.title('Mean and Std Dev Across Seeds - 3 Agents, 3 Tasks')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("new_learning/learning_curve_with_std_5_3.png")
+    plt.savefig("new_learning/learning_curve_with_std_3_3_full.png")
 
 def main():
 
@@ -62,7 +62,7 @@ def main():
         cumulative_rewards[s] = []
 
         # Initialize the environment (PickUpDropOffSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=5, num_tasks=3)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=3)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
