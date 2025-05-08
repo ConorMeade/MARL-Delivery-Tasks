@@ -106,7 +106,7 @@ class PickUpDropOffSimpleSpread:
 
     def step_pickup_drop(self, actions):
         self.step_count += 1
-        # reset rewards at each step for an agent
+        # reset rewards at each step for an agent, only one single ep rewards for rollouts
         self.agent_rewards_out = {agent: 0.0 for agent in self.agents}
 
         # Ensure some action is made, default - stay in current location
