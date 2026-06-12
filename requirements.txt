@@ -1,5 +1,5 @@
 numpy
-pettingzoo
+pettingzoo==1.24.3
 matplotlib
 pygame
 torch
