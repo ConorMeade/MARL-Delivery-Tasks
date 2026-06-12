@@ -58,7 +58,7 @@ class MAPPO:
         ])
         # old_log_probs = torch.stack([r['log_prob'] for r in rollouts])
         old_log_probs = torch.stack(
-            [torch.tensor(r['log_prob'], dtype=torch.float32) for r in rollouts]
+            [r['log_prob'].detach() for r in rollouts]
         )
         # returns = torch.stack([r['return'] for r in rollouts])
         rewards = torch.stack(

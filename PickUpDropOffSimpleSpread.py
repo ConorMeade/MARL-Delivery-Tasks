@@ -1,5 +1,7 @@
 import numpy as np
 import random
+import types
+import pygame
 from collections import defaultdict
 from pettingzoo.mpe import simple_spread_v3
 
@@ -50,7 +52,33 @@ class PickUpDropOffSimpleSpread:
         # Observation and action spaces for each agent
         self.observation_spaces = self.env.observation_space
         self.action_spaces = self.env.action_space
-    
+
+        self._patch_render_with_pickup()
+
+    def _patch_render_with_pickup(self):
+        """Overlay a marker for the pickup location on top of the
+        default simple_spread rendering, without affecting reward
+        computation (the pickup point is not added as a Landmark)."""
+        base_env = self.env.unwrapped
+        original_draw = base_env.draw
+        pickup_loc = self.pickups[0]
+
+        def draw_with_pickup(render_env):
+            original_draw()
+
+            cam_range = np.max(np.abs(np.array(
+                [entity.state.p_pos for entity in render_env.world.entities]
+            )))
+
+            x, y = pickup_loc
+            y *= -1  # match the y-flip used for entities in draw()
+            x = (x / cam_range) * render_env.width // 2 * 0.9 + render_env.width // 2
+            y = (y / cam_range) * render_env.height // 2 * 0.9 + render_env.height // 2
+
+            pygame.draw.circle(render_env.screen, (255, 215, 0), (x, y), 12, 3)
+
+        base_env.draw = types.MethodType(draw_with_pickup, base_env)
+
     def _setup_task_goals(self):
         # Single shared pickup location, fixed across all episodes/seeds so
         # every run trains on the same task
