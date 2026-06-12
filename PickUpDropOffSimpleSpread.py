@@ -10,7 +10,7 @@ class PickUpDropOffSimpleSpread:
         self.env = simple_spread_v3.parallel_env(
             render_mode="human",
             N=num_agents,
-            local_ratio=0.5,
+            local_ratio=0.1,
             max_cycles=max_cycles
         )
         self.seed = seed
@@ -45,16 +45,16 @@ class PickUpDropOffSimpleSpread:
                 'reached_dropoff': False,
                 'pickup_reward': False,
                 'dropoff_reward': False,
-                'goals_completed': 0,
-                'pickups_visited': []
+                'goals_completed': 0
             }
         # Observation and action spaces for each agent
         self.observation_spaces = self.env.observation_space
         self.action_spaces = self.env.action_space
     
     def _setup_task_goals(self):
-        # Setup random pickup and dropoff locations for each agent
-        self.pickups = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
+        # Single shared pickup location, fixed across all episodes/seeds so
+        # every run trains on the same task
+        self.pickups = [np.array([0.5, 0.5])]
         self.dropoffs = [np.random.uniform(-1, 1, size=(2,)) for _ in range(self.num_tasks)]
 
         # print(self.pickups)
@@ -93,8 +93,7 @@ class PickUpDropOffSimpleSpread:
                 'reached_dropoff': False,
                 'pickup_reward': False,
                 'dropoff_reward': False,
-                'goals_completed': 0,
-                'pickups_visited': []
+                'goals_completed': 0
             }
         self.step_count = 0
         obs_flat = {}
@@ -138,8 +137,8 @@ class PickUpDropOffSimpleSpread:
                 continue  # skip agents no longer in the environment, agents that have term/trunc
             # REF
             # observation[agent] = [
-            #     x_pos, y_pos,                # ← 0–1 : actual (global) position
-            #     x_vel, y_vel,                # ← 2–3 : velocity
+            #     x_vel, y_vel,                # ← 0–1 : velocity
+            #     x_pos, y_pos,                # ← 2–3 : actual (global) position
             #     rel_landmark0_x, rel_landmark0_y,   # ← 4–5 : relative to landmark 0
             #     rel_landmark1_x, rel_landmark1_y,   # ← 6–7
             #     rel_landmark2_x, rel_landmark2_y,   # ← 8–9
@@ -147,48 +146,37 @@ class PickUpDropOffSimpleSpread:
             #     rel_agent2_x, rel_agent2_y,         # ← 12–13 : relative to other agent 2
             #     (maybe padding or comms)     # ← 14–17
             # ]
-            # only take first two elems for position
-            pos = observation[agent][:2]
+            # global position is at indices 2:4 (indices 0:2 are velocity)
+            pos = observation[agent][2:4]
             goal = self.agent_goals[agent]
 
             if not goal['reached_pickup'] and not goal['pickup_reward']:
-                # iterate through all pickup locations, 
-                # if position is close enough, 
-                # consider that agent to have reached the pickup location & completed a task
-                for g_idx in range(len(goal['pickup'])):
-                    # goal_index = goal['pickup'].index(g)
-                    cur_goal_state = goal['pickup'][g_idx]
-                    if np.linalg.norm(pos - cur_goal_state) < 0.15 and not self.is_visited(cur_goal_state, self.agent_goals[agent]['pickups_visited']):
-                        print(f'{agent} Reached Pickup Location #{g_idx}')
-                        goal['reached_pickup'] = True
-                        goal['pickup_reward'] = True
-                        # do not want to revisit pickup locations
-                        # goal['pickups_visited'].append(cur_goal_state)
-                        self.agent_infos_out[agent]['color'] = 'orange'
-                        
-                        self.agent_goals[agent]['pickups_visited'].append(cur_goal_state)
+                # single shared pickup location;
+                # if position is close enough, consider that agent to have
+                # reached the pickup location & completed a task
+                cur_goal_state = goal['pickup'][0]
+                if np.linalg.norm(pos - cur_goal_state) < 0.05:
+                    print(f'{agent} Reached Pickup Location')
+                    goal['reached_pickup'] = True
+                    goal['pickup_reward'] = True
+                    self.agent_infos_out[agent]['color'] = 'orange'
 
-                        self.agent_goals[agent]['goals_completed'] += 1
-                        if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
-                            self.agent_rewards_out[agent] += 100
-                            goal['reached_pickup'] = False
-                            goal['pickup_reward'] = False
-                            self.agent_termination_flags[agent] = False
+                    self.agent_goals[agent]['goals_completed'] += 1
+                    self.agent_rewards_out[agent] += 30
 
-                        if self.agent_goals[agent]['goals_completed'] == self.num_tasks:
-                            self.agent_rewards_out[agent] += 100
-                            goal['reached_pickup'] = True
-                            goal['pickup_reward'] = True
-                            self.agent_termination_flags[agent] = True
+                    if self.agent_goals[agent]['goals_completed'] < self.num_tasks:
+                        # allow revisiting the single pickup location for the next task
+                        goal['reached_pickup'] = False
+                        goal['pickup_reward'] = False
+                        self.agent_termination_flags[agent] = False
+                    else:
+                        self.agent_termination_flags[agent] = True
 
         if self.step_count >= self.max_cycles:
             terminations = {agent: True for agent in self.agents}
             return obs_flat, dict(self.agent_rewards_out), terminations, dict(self.agent_truncs_out), dict(self.agent_infos_out)
         else:
             return obs_flat, dict(self.agent_rewards_out), dict(self.agent_termination_flags), dict(self.agent_truncs_out), dict(self.agent_infos_out)
-    
-    def is_visited(self, loc, visited_locations):
-        return any(np.array_equal(loc, visited) for visited in visited_locations)
     
     def _flatten_if_needed(self, obs):
         """If obs is a dict, flatten it into a 1D array."""

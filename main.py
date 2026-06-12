@@ -18,8 +18,8 @@ def plot_rewards(cumulative_rewards, per_agent_rewards, num_agents, num_tasks):
     plt.plot(cumulative_rewards)
     plt.xlabel('Episode')
     plt.ylabel('Total Reward (All Agents)')
-    plt.title(f'Cumulative Ep Rewards - {num_agents} Agents, {num_tasks} Tasks')
-    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}_agents_{num_tasks}_300episodes.png')
+    plt.title(f'Cumulative Ep Rewards - {num_agents} Agents, {num_tasks} Pickups (1 Location)')
+    plt.savefig(f'learning_curves/cumulative_rewards_{num_agents}agents_{num_tasks}pickups_1loc_100episodes.png')
     plt.close()
 
     # agent_names = list(per_agent_rewards[0].keys())
@@ -51,7 +51,7 @@ def main():
     mappo_agent = MAPPO(base_env, actor, critic)
 
     # Training parameters
-    num_episodes = 300
+    num_episodes = 100
     batch_size = 16
     
     # Training loop

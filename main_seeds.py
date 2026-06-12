@@ -13,7 +13,7 @@ def flatten_obs(obs_dict):
         parts.append(np.asarray(v).flatten())
     return np.concatenate(parts)
 
-def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
+def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents, num_tasks):
     all_ep_means = []
     for seed, episode_rewards in cumulative_rewards.items():
         # Convert each dict_values object to a list of floats and compute per-episode mean
@@ -41,11 +41,11 @@ def plot_rewards(cumulative_rewards, num_episodes, num_seeds, num_agents):
     )
     plt.xlabel('Episode')
     plt.ylabel('Mean Cumulative Reward (per episode)')
-    plt.title('Mean and Std Dev Across Seeds - 4 Agents, 7 Tasks')
+    plt.title(f'Mean and Std Dev Across Seeds - {num_agents} Agents, {num_tasks} Pickups (1 Location)')
     plt.grid(True)
     plt.legend()
     plt.tight_layout()
-    plt.savefig("new_learning/learning_curve_with_std_3_3_full.png")
+    plt.savefig(f'new_learning/learning_curve_with_std_{num_agents}agents_{num_tasks}pickups_1loc_{num_episodes}eps.png')
 
 def main():
 
@@ -61,7 +61,7 @@ def main():
         cumulative_rewards[s] = []
 
         # Initialize the environment (PickUpDropOffSimpleSpread)
-        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=30, num_agents=3, num_tasks=3)
+        base_env = PickUpDropOffSimpleSpread(seed=s, max_cycles=100, num_agents=3, num_tasks=3)
         agent = base_env.agents[0]  # Just pick one agent
         obs_dim = base_env.observation_spaces(agent).shape[0]
         act_dim = base_env.action_spaces(agent).n
@@ -156,6 +156,6 @@ def main():
             # per_agent_rewards_all.append(episode_rewards.copy())
 
 
-    plot_rewards(cumulative_rewards, num_episodes, len(seeds), len(base_env.agents))
+    plot_rewards(cumulative_rewards, num_episodes, len(seeds), len(base_env.agents), base_env.num_tasks)
 
 main()

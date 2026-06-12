@@ -26,3 +26,7 @@ Would depend on how python path is configured
 Similarly, to run across five different seeds (for computing mean and std dev), enter:
 
 `python main_seeds.py` or `python3 main_seeds.py`
+
+To run test suite enter:
+
+`python3 -m pytest`
